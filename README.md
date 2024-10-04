@@ -17,7 +17,7 @@ Este repositorio contiene scripts que permiten realizar análisis de redes basad
    - Contiene la creación de las redes para 1000 hogares aleatorios.
 
 4. **`Networks.R`**:
-   - Contiene la creación d elas redes para todas las viviendas. 
+   - Contiene la creación de las redes para todas las viviendas. 
 
 ## Requisitos
 
