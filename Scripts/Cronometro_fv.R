@@ -31,12 +31,12 @@ data<- ori_Casen2020_STATA %>%
   filter(!id_vivienda %in% c(8102104907, 6106100505, 9115300202)) %>%
   rename(household = id_vivienda, sex = sexo) %>%
   mutate(
-    sex = factor(sex, levels = c(1, 2), labels = c("Hombre", "Mujer")),
     household = as.numeric(household),
-    across(c(e6a,pco1, ecivil, pco2, r3, s16,o1, y1_preg), as_factor),
+    across(c(sex,e6a,pco1, ecivil, pco2, r3, s16,o1, y1_preg), as_factor),
     r1b_pais_esp = ifelse(r1b_pais_esp == "", 1,
                           ifelse(r1b_pais_esp == "NO RESPONDE", 3, 2))
   ) 
+data$sex <- as.integer(data$sex)
 
 ###Utiliza set de la data ###
 set.seed(400)  # Fijar semilla para reproducibilidad
@@ -51,7 +51,7 @@ nrow(data_subset)
 ####Red descendencia####
 ###Loop###
 ##Inicio reloj
-start.time <- Sys.time()
+ 
 grafos <- list()
 for(i in unique(data_subset$household)) {
   household_i <- data_subset[which(data_subset$household == i), ]

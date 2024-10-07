@@ -62,7 +62,7 @@ print(a[which(duplicated(a))])
 ###Utiliza set de la data ###
 set.seed(400)  # Fijar semilla para reproducibilidad
 id_vivienda_sample <- sample(unique(data$household), size =1000,replace = F)
-
+data$sex
 # Crear subset con los 1000 id_vivienda seleccionados
 data_subset <- data %>%
   filter(household %in% id_vivienda_sample)
@@ -82,10 +82,10 @@ for (i in unique(data$household)) {
     vivienda_i <- data[data$household == i, ]
     
     # Contar hombres y mujeres
-    n.hombres <- sum(vivienda_i$sexo == "Hombre", na.rm = TRUE)
-    n.mujeres <- sum(vivienda_i$sexo == "Mujer", na.rm = TRUE)
+    n.hombres <- sum(vivienda_i$sex == "Hombre", na.rm = TRUE)
+    n.mujeres <- sum(vivienda_i$sex == "Mujer", na.rm = TRUE)
     porc.hombre <- (n.hombres / (n.hombres + n.mujeres)) * 100
-    porc.ind[is.nan(porc.ind)] <- 0
+    porc.hombre[is.nan(porc.hombre)] <-0
     
     # Media y desviación estándar de la edad
     edad.prom <- mean(vivienda_i$edad, na.rm = TRUE)
