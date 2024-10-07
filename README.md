@@ -11,13 +11,11 @@ Este repositorio contiene scripts que permiten realizar análisis de redes basad
    - Contiene la integración de nuevas variables y el cálculo de medidas para esas variables. Este script es el primer paso en el análisis, asegurando que todas las variables relevantes estén disponibles y correctamente formateadas.
 
 2. **`Cronometro_fv.R`**: 
-   - Contiene el antiguo script "Networks_sapply.qmd" con algunas modificaciones para optimizar.
+   - Contiene el antiguo script "Networks_sapply.qmd" para un subset de 1000 hogares aleatorios.
 
-3. **`Networks_samplefv.R`**: 
-   - Contiene la creación de las redes para 1000 hogares aleatorios.
+3. **`Networks_sapply_fv.qmd`**: 
+   - Contiene el antiguo script "Networks_sapply.qmd" con algunas modificaciones.
 
-4. **`Networks.R`**:
-   - Contiene la creación de las redes para todas las viviendas. 
 
 ## Requisitos
 
