@@ -51,7 +51,7 @@ data<- ori_Casen2020_STATA %>%
                           ifelse(r1b_pais_esp == "NO RESPONDE", 3, 2))
   ) 
 
-##¿Cuantas viviendas tienen un id de persona repetido? ¿CuáleS?
+ ##¿Cuantas viviendas tienen un id de persona repetido? ¿CuáleS?
 a <- paste(data$household, data$id_persona)
 #Cuantas
 cat("Número de viviendas con id de persona repetido:", sum(duplicated(a)), "\n")
@@ -70,6 +70,7 @@ data_subset <- data %>%
 # Verificar el número de filas en el subset
 nrow(data_subset)
 
+######################### CALCULO DE ESTADISTICOS ##############################
 ### Crear listas y data frame vacios para recopilar información 
 measurements <- data.frame()
 
@@ -134,4 +135,7 @@ measurements <- bind_rows(measurements)
 head(measurements)
 
 # Guardar resultados
-save(measurements, file = "Descriptives/mediciones_redes.RData")
+if (!dir.exists("Descriptives")) {
+  dir.create("Descriptives")
+}
+save(measurements, file = "Descriptives/medidas_redes.RData")
