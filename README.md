@@ -20,10 +20,10 @@ Este repositorio contiene scripts que permiten realizar análisis de redes basad
    - Simil al antiguo script "Ploteador.R" con la creación del plot en una función. Entrega una visualización de las redes. AUN NO TERMINADO
 
 5. **`Tabla de atributos.qmd`**: 
-   - Simil al antiguo script "Ploteador.R" con la creación del plot en una función. Entrega una visualización de las redes. AUN NO TERMINADO
+   -  AUN NO TERMINADO
 
 6. **`Análisis de cluster.R`**: 
-   - Simil al antiguo script "Ploteador.R" con la creación del plot en una función. Entrega una visualización de las redes. AUN NO TERMINADO
+   -  AUN NO TERMINADO
 
 ## Requisitos
 
