@@ -13,17 +13,17 @@ Este repositorio contiene scripts que permiten realizar análisis de redes basad
 2. **`Networks_sample_fv.R`**: 
    - Contiene el antiguo script "Networks_sapply.qmd" para un subset de 1000 hogares aleatorios.
 
-3. **`Networks_sapply_mod_fv.qmd`**: 
+3. **`Networks_sapply_mod_fv.R`**: 
    - Contiene el antiguo script "Networks_sapply.qmd" con modificiaciones. Entrega las redes de Descendencia, Dependencia, Matrimonio y Kinship en formato Igraph y Network.
 
 4. **`Function_plot.R`**: 
-   - Simil al antiguo script "Ploteador.R" con la creación del plot en una función. Entrega una visualización de las redes.
+   - Simil al antiguo script "Ploteador.R" con la creación del plot en una función. Entrega una visualización de las redes. AUN NO TERMINADO
 
 5. **`Tabla de atributos.qmd`**: 
-   - Simil al antiguo script "Ploteador.R" con la creación del plot en una función. Entrega una visualización de las redes.
+   - Simil al antiguo script "Ploteador.R" con la creación del plot en una función. Entrega una visualización de las redes. AUN NO TERMINADO
 
 6. **`Análisis de cluster.R`**: 
-   - Simil al antiguo script "Ploteador.R" con la creación del plot en una función. Entrega una visualización de las redes.
+   - Simil al antiguo script "Ploteador.R" con la creación del plot en una función. Entrega una visualización de las redes. AUN NO TERMINADO
 
 ## Requisitos
 
