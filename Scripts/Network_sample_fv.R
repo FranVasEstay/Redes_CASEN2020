@@ -174,7 +174,7 @@ household_process <- function(i, data_subset) {
   V(descent_net)$sex <- as.integer(covariates$sex) #Esto cambio
   V(descent_net)$edad <- as.integer(covariates$edad) #Esto también
   
-  grafo <- list(i = i, descent_net = descent_net)
+  grafo <- list(household_i = i, descent_net = descent_net)
   
   return(grafo)
 }
@@ -203,7 +203,7 @@ descent_igrpah_sample <- foreach(i = unique_households, .packages= c(
 end.time <- Sys.time()
 time.taken_parallel <- end.time - start.time
 time.taken_parallel
-
+descent_igrpah_sample[[100]]$household_i
 # Guardar los resultados en un archivo
 save(descent_igrpah_sample, file = paste0("Redes/descent_igrpah_subset1000.RData"))
 

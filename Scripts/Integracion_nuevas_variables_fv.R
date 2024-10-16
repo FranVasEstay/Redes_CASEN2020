@@ -62,7 +62,6 @@ print(a[which(duplicated(a))])
 ###Utiliza set de la data ###
 set.seed(400)  # Fijar semilla para reproducibilidad
 id_vivienda_sample <- sample(unique(data$household), size =1000,replace = F)
-data$sex
 # Crear subset con los 1000 id_vivienda seleccionados
 data_subset <- data %>%
   filter(household %in% id_vivienda_sample)

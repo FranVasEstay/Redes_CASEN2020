@@ -415,4 +415,3 @@ kinship_network <- lapply(a, function(j) {
 })
 
 save(kinship_network, file = paste0("Redes/kinship_network.RData"))
-

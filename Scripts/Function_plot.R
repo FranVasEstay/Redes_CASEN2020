@@ -10,66 +10,213 @@ library(igraph)
 library(kinship2)
 library(tidyverse)
 
-# Función para definir el ploteo de redes
-plot_network <- function(net, net_name, shapes, colrs, layout_type, graph_title) {
-  plot(net,
-       vertex.shape = shapes[V(net)$sex],
-       vertex.color = colrs[V(net)$sex],
-       vertex.size = log(V(net)$edad) * 4.5,
-       vertex.label = V(net)$`vivienda_i$id_persona`,
-       vertex.label.cex = 0.5,
-       edge.width = 1,
-       edge.arrow.size = 0.5,
-       layout = layout_type,
-       main = paste(graph_title, " - ", net_name)
-  )
+################################################################################
+############################ REDES DE PRUEBA ###################################
+################################################################################
+# Cargar redes previamente creadas
+load("Redes/descent_igrpah_subset1000.RData")
+load("Redes/marriage_igrpah_subset1000.RData")
+load("Redes/dependency_network_subset1000.RData")
+load("Redes/kinship_igrpah_subset1000.RData")
+
+########################## RED DE MATRIMONIO ###################################
+plot_network_matri <- function(network_list, output_file) {
+  
+  # Iniciar el dispositivo PDF
+  pdf(file = output_file, width = 10, height = 8)  # Puedes ajustar el tamaño según sea necesario
+  
+  # Definir formas y colores para los nodos
+  shapes <- c("square", "circle")
+  colors <- c("lightblue", "pink")
+  
+  # Iterar sobre cada red en la lista
+  for (i in seq_along(network_list)) {
+    # Extraer información del household_i
+    household_id <- network_list[[i]]$household_i
+    
+    # Extraer la red de matrimonio
+    marriage_net <- network_list[[i]]$marriage_net
+    
+    # Verificar si la red de matrimonio no está vacía
+    if (!is.null(marriage_net) && vcount(marriage_net) > 0) {
+      # Gráfico de la red de matrimonio
+      plot(marriage_net,
+           vertex.shape=shapes[V(marriage_net)$sex],
+           vertex.color=colors[V(marriage_net)$sex],
+           vertex.size=log(V(marriage_net)$edad + 1) * 4.5,  # Sumar 1 para evitar log(0)
+           vertex.label=V(marriage_net)$name,
+           vertex.label.cex=.5,
+           edge.width=1,
+           edge.arrow.size=.5,
+           main=paste("Marriage Network for Household ID:", household_id))
+    } else {
+      message(paste("No marriage network for Household ID:", household_id))
+    }
+
+  }
+  # Cerrar el dispositivo PDF
+  dev.off()
 }
 
-# Definir triángulo como una forma personalizada
-mytriangle <- function(coords, v = NULL, params) {
-  vertex.color <- params("vertex", "color")
-  vertex.size <- 1/200 * params("vertex", "size")
-  symbols(x = coords[, 1], y = coords[, 2], bg = vertex.color,
-          stars = cbind(vertex.size, vertex.size, vertex.size),
-          crt = 90, add = TRUE, inches = FALSE)
+# Ejecutar la función para visualizar todas las redes
+output_file <- "Redes/visualizaciones_marriage_sample.pdf"
+plot_network_matri(marriage_igrpah_sample,output_file)
+
+########################## RED DE DESCENDENCIA #################################
+plot_network_desce <- function(network_list, output_file) {
+  
+  # Iniciar el dispositivo PDF
+  pdf(file = output_file, width = 10, height = 8)  # Puedes ajustar el tamaño según sea necesario
+  
+  # Definir formas y colores para los nodos
+  shapes <- c("square", "circle")
+  colors <- c("lightblue", "pink")
+  
+  # Iterar sobre cada red en la lista
+  for (i in seq_along(network_list)) {
+    # Extraer información del household_i
+    household_id <- network_list[[i]]$household_i
+    
+    # Extraer la red de descendencia
+    descent_net <- network_list[[i]]$descent_net  # Verifica que este sea el nombre correcto
+    
+    # Verificar si la red de descendencia no está vacía
+    if (!is.null(descent_net) && vcount(descent_net) > 0) {
+      # Gráfico de la red de descendencia
+      plot(descent_net,
+           vertex.shape=shapes[V(descent_net)$sex],
+           vertex.color=colors[V(descent_net)$sex],
+           vertex.size=log(V(descent_net)$edad + 1) * 4.5,  # Sumar 1 para evitar log(0)
+           vertex.label=V(descent_net)$name,
+           vertex.label.cex=.5,
+           edge.width=1,
+           edge.arrow.size=.5,
+           main=paste("Descend Network for Household ID:", household_id))  # Imprimir el ID aquí
+    } else {
+      message(paste("No Descend network for Household ID:", household_id))
+    }
+  }
+  # Cerrar el dispositivo PDF
+  dev.off()
 }
 
-# Agregar la forma de triángulo
-add_shape("triangle", clip = shapes("circle")$clip, plot = mytriangle)
+# Ejecutar la función para visualizar todas las redes
+output_file <- "Redes/visualizaciones_descent_sample.pdf"
+plot_network_desce(descent_igrpah_sample,output_file)
 
-# Definir colores y formas
-shapes <- c("square", "circle")
-colrs <- c("lightblue", "pink")
+########################## RED DE DEPENDENCIA ##################################
+plot_network_depen <- function(network_list, output_file) {
+  
+  # Iniciar el dispositivo PDF
+  pdf(file = output_file, width = 10, height = 8)  # Puedes ajustar el tamaño según sea necesario
+  
+  # Definir formas y colores para los nodos
+  shapes <- c("square", "circle")
+  colors <- c("lightblue", "pink")
+  
+  # Iterar sobre cada red en la lista
+  for (i in seq_along(network_list)) {
+    # Extraer información del household_i
+    household_id <- network_list[[i]]$household_i
+    
+    # Extraer la red de dependencia
+    dependency_net <- network_list[[i]]$dependency_net
+    
+    # Verificar si la red de dependencia no está vacía
+    if (!is.null(dependency_net) && vcount(dependency_net) > 0) {
+      # Gráfico de la red de dependencia
+      plot(dependency_net,
+           vertex.shape=shapes[V(dependency_net)$sex],
+           vertex.color=colors[V(dependency_net)$sex],
+           vertex.size=log(V(dependency_net)$edad + 1) * 4.5,  # Sumar 1 para evitar log(0)
+           vertex.label=V(dependency_net)$name,
+           vertex.label.cex=.5,
+           edge.width=1,
+           edge.arrow.size=.5,
+           main=paste("Dependency Network for Household ID:", household_id))
+    } else {
+      message(paste("No Dependency network for Household ID:", household_id))
+    }
+    
+  }
+  # Cerrar el dispositivo PDF
+  dev.off()
+}
 
-# Cambiar por el ID que corresponda
-g <- "1101100101"
-kinship_net <- grafos[g][[1]]$kinship_net
-descent_net <- grafos[g][[1]]$descent_net
-marriage_net <- grafos[g][[1]]$marriage_net
+output_file <- "Redes/visualizaciones_dependency_sample.pdf"
+plot_network_depen(dependency_igrpah_sample,output_file)
 
-# Ploteo de las redes
-plot_network(kinship_net, "Kinship", shapes, colrs, layout.reingold.tilford(kinship_net, mode = "all"), grafos[g][[1]]$i)
-plot_network(descent_net, "Descent", shapes, colrs, layout.reingold.tilford(descent_net, mode = "in"), grafos[g][[1]]$i)
-plot_network(marriage_net, "Marriage", shapes, colrs, layout.auto, grafos[g][[1]]$i)
+############################ RED KINSHIP #######################################
+plot_network_kinship <- function(network_list, output_file) {
+  
+  # Iniciar el dispositivo PDF
+  pdf(file = output_file, width = 10, height = 8)  # Puedes ajustar el tamaño según sea necesario
+  
+  # Definir formas y colores para los nodos
+  shapes <- c("square", "circle")
+  colors <- c("lightblue", "pink")
+  
+  # Iterar sobre cada red en la lista
+  for (i in seq_along(network_list)) {
+    # Extraer información del household_i
+    household_id <- network_list[[i]]$household_i
+    
+    # Extraer la red de kinship
+    kinship_net <- network_list[[i]]$kinship_net
+    
+    # Verificar si la red de matrimonio no está vacía
+    if (!is.null(kinship_net) && vcount(kinship_net) > 0) {
+      # Gráfico de la red de matrimonio
+      plot(kinship_net,
+           vertex.shape=shapes[V(kinship_net)$sex],
+           vertex.color=colors[V(kinship_net)$sex],
+           vertex.size=log(V(kinship_net)$edad + 1) * 4.5,  # Sumar 1 para evitar log(0)
+           vertex.label=V(kinship_net)$name,
+           vertex.label.cex=.5,
+           edge.width=1,
+           edge.arrow.size=.5,
+           main=paste("Kinship Network for Household ID:", household_id))
+    } else {
+      message(paste("No Kinship network for Household ID:", household_id))
+    }
+    
+  }
+  # Cerrar el dispositivo PDF
+  dev.off()
+}
 
-# Ploteador versión Pedigree
-a <- as.data.frame(get.edgelist(descent_net))
-b <- as.data.frame(get.vertex.attribute(descent_net))
-names(a) <- c("parent", "child")
+output_file <- "Redes/visualizaciones_kinship_sample.pdf"
+plot_network_kinship(kinship_igrpah_sample,output_file)
 
-# Identificar padres y convertir el formato
-parent_sex <- inner_join(a, b)
-names(parent_sex) <- c("parent", "name", "sex_parent", "edad")
 
-inter <- parent_sex %>% 
-  pivot_wider(names_from = sex_parent, values_from = parent, id_cols = name) %>%
-  rename(momid = `2`, dadid = `1`)
+################################################################################
+############################ REDES COMPLETAS ###################################
+################################################################################
+# Cargar redes previamente creadas
+load("Redes/descent_igrpah.RData")
+load("Redes/marriage_igrpah.RData")
+load("Redes/dependency_network.RData")
+load("Redes/kinship_igrpah.RData")
 
-pre_ped <- left_join(b, inter)
+########################## RED DE MATRIMONIO ###################################
 
-# Ajustar los padres en el formato de kinship2
-pre_ped <- fixParents(id = pre_ped$name, dadid = pre_ped$dadid, momid = pre_ped$momid, sex = pre_ped$sexo)
-ped <- pedigree(id = pre_ped$id, dadid = pre_ped$dadid, momid = pre_ped$momid, sex = pre_ped$sexo, missid = 0)
+# Ejecutar la función para visualizar todas las redes
+output_file <- "Redes/visualizaciones.pdf"
+plot_network_matri(marriage_igrpah,output_file)
 
-# Ploteo del pedigree
-plot(ped)
+########################## RED DE DESCENDENCIA #################################
+
+# Ejecutar la función para visualizar todas las redes
+output_file <- "Redes/visualizaciones.pdf"
+plot_network_desce(descent_igrpah,output_file)
+
+########################## RED DE DEPENDENCIA ##################################
+
+output_file <- "Redes/visualizaciones.pdf"
+plot_network_depen(dependency_igrpah,output_file)
+
+############################ RED KINSHIP #######################################
+
+output_file <- "Redes/visualizaciones_kinship.pdf"
+plot_network_kinship(kinship_igrpah,output_file)
+
