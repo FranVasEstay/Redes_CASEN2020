@@ -54,28 +54,28 @@ set.seed(123)
   #sample_n(size = 20000, replace = FALSE)
 
 ## Marriage network
-results_list_marriage_sample[sapply(results_list_marriage_sample, is.nan)] <- 0
+results_list_marriage[sapply(results_list_marriage, is.nan)] <- 0
 
 ##Data muestrada
-df_dep <- results_list_dependency_sample %>%
+df_dep <- results_list_dependency %>%
   as.data.frame()%>%
   mutate(across(everything(), as.numeric))%>%
   na.omit()
 df_dep <- df_dep[, apply(df_dep, 2, var) != 0]
 View(df_dep)
-df_des <- results_list_descent_sample %>%
+df_des <- results_list_descent %>%
   as.data.frame()%>%
   mutate(across(everything(), as.numeric))%>%
   na.omit()
 df_des <- df_des[, apply(df_des, 2, var) != 0]
 View(df_des)
-df_mar <- results_list_marriage_sample %>%
+df_mar <- results_list_marriage %>%
   as.data.frame()%>%
   mutate(across(everything(), as.numeric))%>%
   na.omit()
 df_mar <- df_mar[, apply(df_mar, 2, var) != 0]
 View(df_mar)
-df_kin <- results_list_kinship_sample %>%
+df_kin <- results_list_kinship %>%
   as.data.frame()%>%
   mutate(across(everything(), as.numeric))%>%
   na.omit()

@@ -6,14 +6,14 @@
 ################################################################################
 
 ###### LIBRERÍAS ######
-install.packages(c("DoParalell"))
+#install.packages(c("DoParalell"))
 library(easypackages)
 paquetes <- c("FactoMineR", "tidyverse", "factoextra", "haven", "naniar", "corrplot","doParallel")
 libraries(paquetes)
 
 ###### CARGAR DATA ######
 load("Data/ori_Casen2020_rdata.RData")
-load("Redes/tablas_redes.RData")
+load("Redes/tablas_redes_cluster.RData")
 #load("Redes/tablas_redes_sample.RData")
 #head(results_list_dependency)
 #head(results_list_descent)
