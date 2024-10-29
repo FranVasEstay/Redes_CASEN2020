@@ -32,8 +32,10 @@ library(doParallel)
 ## Datos
 
 ```{r}
-
 load("Redes/tablas_redes.RData")
+```
+
+```{r}
 
 ### Filtro de viviendas
 ## Viviendas de tamaño 1 o 2
@@ -257,7 +259,7 @@ results_list_dependency<-cbind(df_dep,cl_dep)
 results_list_descent<-cbind(df_des,cl_des)
 results_list_marriage<-cbind(df_mar,cl_mar)
 results_list_kinship<-cbind(df_kin,cl_kin)
-tablas_redes <- c()
+tablas_redes <- c("results_list_dependency","results_list_descent","results_list_kinship","results_list_marriage")
 save(list=tablas_redes,file = "Redes/tablas_redes_cluster.RData")
 ```
 
