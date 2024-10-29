@@ -1,4 +1,3 @@
-<<<<<<< HEAD
 ################################################################################
 ###################### Social Network: encuesta CASEN ##########################
 ################################################################################
@@ -79,11 +78,7 @@ dummy_dep <- results_list_dependency%>%
 
 #Unir ambas bases de datos por id_vivienda 
 dummy_dep_bind <-merge(dummy.data,dummy_dep,by="household")
-# excluir las columnas "id" y "gcluster"
-cols_to_exclude <- c("household", "g.cluster")
-# Filtra las columnas que no estén en la lista de exclusiones y luego aplica la operación
-data_pcm_dep <- as.data.frame(dummy_dep_bind[, !(colnames(dummy_dep_bind) %in% cols_to_exclude)])
-#data_pcm_dep <- data_pcm_dep[, apply(data_pcm_dep, 2, var) != 0]  # Elimina las columnas con varianza cero
+head(dummy_dep_bind)
 data_pcm_dep$quintil<-factor(data_pcm_dep$quintil)
 data_pcm_dep$size<-factor(data_pcm_dep$size)
 data_pcm_dep$ties<-factor(data_pcm_dep$ties)
@@ -112,7 +107,7 @@ data_pcm_dep <- select(data_pcm_dep, -density)#Eliminar density porque sólo tie
 colnames(data_pcm_dep)
 
 #Calculo de Correspondencias múltiples
-dummy.mca.dep <-MCA(data_pcm_dep,ncp = 4,graph=F)
+dummy.mca.dep <-MCA(data_pcm_dep,ncp = 4,graph=F,ind.sup=data_pcm_dep$household,quali.sup=data_pcm_dep$) # Agregar cluster en quali.sup y id a ind.sup
 print(dummy.mca.dep)
 
 ###Visualizacion
