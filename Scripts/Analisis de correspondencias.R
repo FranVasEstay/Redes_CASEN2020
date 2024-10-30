@@ -32,28 +32,32 @@ data<- ori_Casen2020_STATA %>%
     salario =factor(salario, levels=c(1,2),labels=c("Si","No")),
     nacion = ifelse(nacion == "", 1,
                           ifelse(nacion == "NO RESPONDE", 3, 2)),
-    nacion = factor(nacion, levels = c(1, 2), labels = c("Chileno", "Extranjero"))
-    
-  ) 
-na_strings <- c("No_sabe", "No_sabe/No_recuerda", "No_sabe\\No_responde")
+    nacion = factor(nacion, levels = c(1, 2), labels = c("Chileno", "Extranjero")),
+    work = ifelse(is.na(work), "No_trabaja", work),
+    salario = ifelse(is.na(salario), "No_trabaja", salario),
+    civil = ifelse(is.na(civil), "No_aplica", civil)
+  )
 
 # Se seleccionan las variables necesarias
 ncores <- detectCores()-1
 cl <- parallel::makeCluster(ncores)
 registerDoParallel(cl)
 dummy.data<- data %>%
+  group_by(household) %>%
+  summarise(total_money = sum(money, na.rm = TRUE), .groups = 'drop') %>%  # Sumar money por hogar
+  mutate(quintil = ntile(total_money, 5)) %>%  # Calcular quintiles
+  select(household, quintil) %>%  # Mantener solo household y quintil
+  right_join(data, by = "household") %>%  # Unir de nuevo con los datos originales
   mutate(
-    quintil = ntile(money, 5),  # Se crean rangos basados en quintiles
     grupo_etario = cut(edad, 
-                       breaks = c(0, 11, 18, 30, 60, Inf), 
+                       breaks = c(-1, 11, 18, 30, 60, Inf), 
                        labels = c("Niñez", "Adolescencia", "Juventud", "Adultez", "Vejez"),
                        right = TRUE),  # Clasificación por grupos etarios
     health = ifelse(health == "No sabe/No recuerda", "No_sabe/No_recuerda", health),
 #    salario = ifelse(salario == "No sabe", "No_sabe", salario),
     civil = ifelse(civil == "No sabe\\No responde","No_sabe\\No_responde",civil)
   ) %>%
-  select(grupo_etario,household,sex, education, work, nacion, parent, civil,native, health, salario, quintil,comuna,region)%>% # Se seleccionan las variables 
-  naniar::replace_with_na_all(condition = ~.x %in% na_strings) #Se reemplazan todos los NA
+  select(grupo_etario,household,sex, education, work, nacion, parent, civil,native, health, salario, quintil,comuna,region) # Se seleccionan las variables 
 stopCluster(cl)
 
 save(dummy.data, file = "Data/Dummy_data_mca.RData")
@@ -76,38 +80,61 @@ print(colnames(dummy.data))
 #Cambiar id por household
 dummy_dep <- results_list_dependency%>%
   rename(household=id, Cluster=grupos_dep.cluster)
-
+colnames(dummy_dep)
 #Unir ambas bases de datos por id_vivienda 
 dummy_dep_bind <-merge(dummy.data,dummy_dep,by="household")
+#Cambiar variables a factor
+dummy_dep_bind$household<-factor(dummy_dep_bind$household)
 dummy_dep_bind$size<-factor(dummy_dep_bind$size)
 dummy_dep_bind$ties<-factor(dummy_dep_bind$ties)
 dummy_dep_bind$n_comp<-factor(dummy_dep_bind$n_comp)
 dummy_dep_bind$diameter<-factor(dummy_dep_bind$diameter)
 dummy_dep_bind$isolates<-factor(dummy_dep_bind$isolates)
-dummy_dep_bind$cluster<-factor(dummy_dep_bind$Cluster)
-#dummy_dep_bind$civil<-factor(dummy_dep_bind$civil)
-#dummy_dep_bind$health<-factor(dummy_dep_bind$health)
-#dummy_dep_bind$salario<-factor(dummy_dep_bind$salario) ## Puede que el problema esté aquí
-#dummy_dep_bind$comuna<-factor(dummy_dep_bind$comuna) ## Falta cambiar el numero por las comunas
-#dummy_dep_bind$region<-factor(dummy_dep_bind$region)
-#dummy_dep_bind$grupo_etario<-factor(dummy_dep_bind$grupo_etario)
-#dummy_dep_bind$quintil<-factor(dummy_dep_bind$quintil)
-  
+dummy_dep_bind$Cluster<-factor(dummy_dep_bind$Cluster)
+
+# Cambiar los niveles de comuna. Esto debería ir en la creación de dummy data
+dummy_dep_bind$comuna<-factor(dummy_dep_bind$comuna)
+#niveles <- unique(dummy_dep_bind$comuna)
+#etiquetas <- attr(dummy_dep_bind$comuna, "labels")
+#dummy_dep_bind$comuna <- factor(dummy_dep_bind$comuna, 
+ #                               levels = niveles, 
+  #                              labels = etiquetas[as.character(niveles)])
+
+# Cambiar los niveles de region. Esto debería ir en la creación de dummy data
+niveles <- unique(dummy_dep_bind$region)
+etiquetas <- attr(dummy_dep_bind$region, "labels")
+dummy_dep_bind$region <- factor(dummy_dep_bind$region, levels = niveles, labels = etiquetas[niveles])
+
+dummy_dep_bind$civil<-factor(dummy_dep_bind$civil)
+dummy_dep_bind$health<-factor(dummy_dep_bind$health)
+dummy_dep_bind$salario<-factor(dummy_dep_bind$salario)
+dummy_dep_bind$comuna<-factor(dummy_dep_bind$comuna)
+dummy_dep_bind$region<-factor(dummy_dep_bind$region)
+dummy_dep_bind$grupo_etario<-factor(dummy_dep_bind$grupo_etario)
+dummy_dep_bind$quintil<-factor(dummy_dep_bind$quintil)
+dummy_dep_bind$work<-factor(dummy_dep_bind$work)
+
 #Revisando los datos
-dummy_dep_bind<-na.omit(dummy_dep_bind)
 dev.new(width = 24, height = 16)
 par(mar = c(4, 4, 2, 1), oma = c(0, 0, 2, 0))
 par(mfrow = c(4, 5))  # 3 filas y 5 columnas para un total de 15 gráficos
-for(i in 1:15){
+for(i in 1:20){
   plot(dummy_dep_bind[,i], main=colnames(dummy_dep_bind)[i],
        ylab="Cantidad", col="pink",las=2)
 }
 str(dummy_dep_bind)
-dummy_dep_bind <- select(dummy_dep_bind, -density)#Eliminar density porque sólo tiene un level (REVISAR LUEGO)
 colnames(dummy_dep_bind)
-
+sum(is.na(dummy_dep_bind))
+dummy_dep_bind <- na.omit(dummy_dep_bind)
 #Calculo de Correspondencias múltiples
-dummy.mca.dep <-MCA(dummy_dep_bind,ncp = 4,graph=F,ind.sup=1,quali.sup=2:12) # Agregar cluster en quali.sup y id a ind.sup
+ind.sup <- 1
+quali.sup <- 2:14
+
+ncores <- detectCores()-1
+cl <- parallel::makeCluster(ncores)
+registerDoParallel(cl)
+dummy.mca.dep <-MCA(dummy_dep_bind,ncp = 4,graph=F,quali.sup=2:14,na.method = "Average")
+stopCluster(cl)
 print(dummy.mca.dep)
 
 ###Visualizacion
