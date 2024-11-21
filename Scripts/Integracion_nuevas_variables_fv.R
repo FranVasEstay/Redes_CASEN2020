@@ -40,16 +40,17 @@ cat("id_vivienda_repetida id_persona_repetida\n")
 print(a[which(duplicated(a))])
 
 data<- ori_Casen2020_STATA %>%
-  select(id_vivienda, id_persona, edad, sexo,e6a,o1,r1b_pais_esp, pco1, h5, ecivil, h5_1, h5_2, r1b_pais_esp,nucleo, pco2, r3,s16,y1,y1_preg, comuna, region) %>%
+  select(id_vivienda, id_persona, edad, sexo,e6a,o1,r1b_pais_esp, pco1, h5, ecivil, h5_1, h5_2, r1b_pais_esp,nucleo, pco2, r3,s17,s28,y1,y1_preg, comuna, region) %>%
   filter(!id_vivienda %in% c(8102104907, 6106100505, 9115300202)) %>%
   rename(household = id_vivienda, sex = sexo) %>%
   mutate(
     sex = factor(sex, levels = c(1, 2), labels = c("Hombre", "Mujer")),
     household = as.numeric(household),
-    across(c(e6a,pco1, ecivil, pco2, r3, s16,o1, y1_preg), as_factor),
+    across(c(e6a,pco1, ecivil, pco2, r3, s17,o1, y1_preg), as_factor),
     r1b_pais_esp = ifelse(r1b_pais_esp == "", 1,
                           ifelse(r1b_pais_esp == "NO RESPONDE", 3, 2))
-  ) 
+  )
+save(data, file = "Data/Data.RData")
 
  ##¿Cuantas viviendas tienen un id de persona repetido? ¿CuáleS?
 a <- paste(data$household, data$id_persona)
@@ -69,10 +70,15 @@ data_subset <- data %>%
 # Verificar el número de filas en el subset
 nrow(data_subset)
 
+save(data_subset, file = "Data/Data_subset.RData")
+
 ######################### CALCULO DE ESTADISTICOS ##############################
 ### Crear listas y data frame vacios para recopilar información 
 measurements <- data.frame()
 
+ncores <- detectCores()-1
+cl <- parallel::makeCluster(ncores)
+registerDoParallel(cl)
 #Error handling
 options("tryCatchLog.write.error.dump.file" = TRUE)
 
@@ -93,9 +99,9 @@ for (i in unique(data$household)) {
     
     # Contar indígenas
     indtab <- vivienda_i %>% count(r3, .drop = FALSE)
-    n.ind <- sum(indtab$n, na.rm = TRUE) - indtab$n[which(indtab$r3 == "No indígena")]
-    porc.ind <- ifelse(sum(!is.na(vivienda_i$r3)) == 0, 0, (n.ind / sum(!is.na(vivienda_i$r3))) * 100)
-    porc.ind[is.na(porc.ind)] <- 0
+    n.ind <- sum(indtab$n[indtab$r3 %in% levels(data$r3)[1:10]], na.rm = TRUE)
+    total_personas <- sum(indtab$n, na.rm = TRUE)
+    porc.ind <- ifelse(total_personas == 0, 0, (n.ind / total_personas) * 100)
     
     # Obtener región y comuna
     region <- unique(vivienda_i$region)
@@ -106,8 +112,14 @@ for (i in unique(data$household)) {
     porc.empleo <- (n.siW / sum(!is.na(vivienda_i$o1)))* 100
     
     # Atención de salud
-    n.saludsi <- sum(vivienda_i$s16 == "Sí", na.rm = TRUE)
-    porc.salud <- (n.saludsi / sum(!is.na(vivienda_i$s16))) * 100
+    n.saludsi <- sum(vivienda_i$s17 == "Sí", na.rm = TRUE)
+    porc.salud <- (n.saludsi / sum(!is.na(vivienda_i$s17))) * 100
+    
+    # Condición de salud
+    enftab <- vivienda_i %>% count(s28, .drop = FALSE)
+    n.enf <- sum(enftab$n[enftab$s28 %in% levels(data$s28)[1:10]], na.rm = TRUE)
+    total_personas_s <- sum(enftab$n, na.rm = TRUE)
+    porc.enf <- ifelse(total_personas == 0, 0, (n.enf / total_personas_s) * 100)
     
     # Nacionalidad
     n.chi <- sum(vivienda_i$r1b_pais_esp == 1, na.rm = TRUE)
@@ -117,6 +129,10 @@ for (i in unique(data$household)) {
     n.siS <- sum(vivienda_i$y1_preg == "Sí", na.rm = TRUE)
     porc.sal <- (n.siS / sum(!is.na(vivienda_i$y1_preg))) * 100
     porc.sal[is.nan(porc.sal)] <- 0
+    
+    #Quintil
+    prom_sueldo <- mean(vivienda_i$y1, na.rm = TRUE)
+    quintil_sueldo <- ntile(prom_sueldo, 5)
     
     # Crear tabla de resultados
     table_households <- tibble(i, porc.hombre, porc.ind, porc.empleo, porc.salud, porc.chi, porc.sal, edad.prom, edad.sd, region, comuna)
@@ -128,9 +144,9 @@ for (i in unique(data$household)) {
   })
 }
 
-
 # Unir todos los resultados en un solo dataframe
 measurements <- bind_rows(measurements)
+stopCluster(cl)
 head(measurements)
 
 # Guardar resultados
@@ -138,3 +154,6 @@ if (!dir.exists("Descriptives")) {
   dir.create("Descriptives")
 }
 save(measurements, file = "Descriptives/medidas_redes.RData")
+
+load("Descriptives/medidas_redes.RData")
+
