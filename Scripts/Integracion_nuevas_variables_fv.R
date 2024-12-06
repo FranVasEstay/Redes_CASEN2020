@@ -157,3 +157,4 @@ save(measurements, file = "Descriptives/medidas_redes.RData")
 
 load("Descriptives/medidas_redes.RData")
 
+
