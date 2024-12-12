@@ -1,0 +1,558 @@
+---
+title: "PCA_redes"
+author: "Ana Karen Espinoza/Nicolás Montalva"
+format: html
+editor: visual
+---
+
+## Análisis de componentes principales
+
+### Librerías
+
+```{r}
+
+library('corrr')
+library(ggplot2)
+library(ggcorrplot)
+library("FactoMineR")
+library(dplyr)
+library(factoextra)
+library(corrplot)
+
+
+```
+
+### Cargar bases de datos
+
+```{r}
+
+load("tablas_redes.RData")
+```
+
+## PCA red dependencia
+
+```{r}
+
+head(results_list_dependency)
+
+print(colnames(results_list_dependency))
+
+# excluir las columnas "id" y "gcluster"
+cols_to_exclude <- c("id", "g.cluster")
+
+# Filtra las columnas que no estén en la lista de exclusiones y luego aplica la operación
+data_pca_dep <- results_list_dependency[, !(colnames(results_list_dependency) %in% cols_to_exclude)]
+
+data_pca_dep <- data_pca_dep[, apply(data_pca_dep, 2, var) != 0]  # Elimina las columnas con varianza cero
+pca_red_dep <- prcomp(data_pca_dep, scale = TRUE)
+
+# Muestra de los primeros 6 elementos del vector de loadings de los 5 primeros componentes
+head(pca_red_dep$rotation)[, 1:5]
+
+##Scores
+
+head(pca_red_dep$x)[,1:5]
+
+# Varianza explicada por cada componente
+pca_red_dep$sdev^2
+
+summary(pca_red_dep)
+
+##Invirtiendo los signos
+
+pca_red_dep$rotation <- -1*pca_red_dep$rotation
+pca_red_dep$rotation
+
+pca_red_dep$x <- -1*pca_red_dep$x
+pca_red_dep$x
+
+##Se visualizan los primeros 6 scores
+
+head(pca_red_dep$x)
+
+#biplot para visualizar los resultados
+biplot(pca_red_dep, scale = 0, choices = c(1,2))
+
+pca_red_dep$x[, c(1:2)] <- pca_red_dep$x[, c(1:2)]/sqrt(nrow(data_pca_dep)-1)
+
+biplot(pca_red_dep, scale = 0, cex = 0.5, col = c("dodgerblue3", "deeppink3"), choices = c(1,2))
+
+
+
+##Screeplot
+
+fviz_screeplot(pca_red_dep, addlabels = TRUE, ylim = c(0, 70))
+
+##Contribución de variables a componentes 1 y 2
+
+# Top 10 variables que más contribuyen a PC1
+fviz_contrib(pca_red_dep, choice = "var", axes = 1, top = 10)
+
+# Top 10 variables que más contribuyen a PC2
+fviz_contrib(pca_red_dep, choice = "var", axes = 2, top = 10)
+
+#Varianza explicada y acumulada
+
+PVE_dep <- 100*pca_red_dep$sdev^2/sum(pca_red_dep$sdev^2)
+PVE_dep
+
+par(mfrow = c(1,2))
+
+plot(PVE_dep, type = "o", 
+     ylab = "PVE", 
+     xlab = "Componente principal", 
+     col = "blue")
+plot(cumsum(PVE_dep), type = "o", 
+     ylab = "PVE acumulada", 
+     xlab = "Componente principal", 
+     col = "brown3")
+
+##Con función PCA
+respca_dep<-PCA(data_pca_dep, scale.unit = TRUE, ncp = 5, graph = TRUE)
+
+print(respca_dep)
+
+##eigenvalues
+eig.val.dep <- get_eigenvalue(respca_dep) 
+eig.val.dep
+
+##Screeplot
+
+fviz_eig(respca_dep, addlabels = TRUE, ylim = c(0, 70))
+
+##Coordenadas componentes
+
+var_dep <- get_pca_var(respca_dep) 
+head(var_dep$coord)
+
+# Cos2: calidad en el mapa factore
+head(var_dep$cos2)
+
+# Aportes a los componentes principales
+head(var_dep$contrib)
+
+#Coordenadas de variables
+head(var_dep$coord, 6) 
+
+##Taza de variables:
+fviz_pca_var(respca_dep, col.var = "black")
+
+head(var_dep$cos2, 6)
+
+##Cos2 según corrplot
+
+corrplot(var_dep$cos2, is.corr=FALSE)
+
+# Cos2 total de variables en Dim.1 y Dim.2
+fviz_cos2(respca_dep, choice = "var", axes = 1:2)
+
+
+# Color por valores cos2: calidad en el mapa de factores
+fviz_pca_var(respca_dep, col.var = "cos2",
+             gradient.cols = c("#00AFBB", "#E7B800", "#FC4E07"),
+             repel = TRUE # Evita la superposición de texto
+             )
+
+##Contribución 
+
+corrplot(var_dep$contrib, is.corr=FALSE)
+fviz_pca_var(respca_dep, col.var = "contrib",
+            gradient.cols = c("#00AFBB", "#E7B800", "#FC4E07")
+            )
+```
+
+## PCA red descendencia
+
+```{r}
+
+head(results_list_descent)
+
+print(colnames(results_list_descent))
+
+# excluir las columnas "id" y "gcluster"
+cols_to_exclude <- c("id", "g.cluster")
+
+# Filtra las columnas que no estén en la lista de exclusiones y luego aplica la operación
+data_pca_des <- results_list_descent[, !(colnames(results_list_descent) %in% cols_to_exclude)]
+
+data_pca_des <- data_pca_des[, apply(data_pca_des, 2, var) != 0]  # Elimina las columnas con varianza cero
+pca_red_des <- prcomp(data_pca_des, scale = TRUE)
+
+# Muestra de los primeros 6 elementos del vector de loadings de los 5 primeros componentes
+head(pca_red_des$rotation)[, 1:5]
+
+##Scores
+
+head(pca_red_des$x)[,1:5]
+
+# Varianza explicada por cada componente
+pca_red_des$sdev^2
+
+summary(pca_red_des)
+
+##Invirtiendo los signos
+
+pca_red_des$rotation <- -1*pca_red_des$rotation
+pca_red_des$rotation
+
+pca_red_des$x <- -1*pca_red_des$x
+pca_red_des$x
+
+##Se visualizan los primeros 6 scores
+
+head(pca_red_des$x)
+
+#biplot para visualizar los resultados
+biplot(pca_red_des, scale = 0, choices = c(1,2))
+
+pca_red_des$x[, c(1:2)] <- pca_red_des$x[, c(1:2)]/sqrt(nrow(data_pca_des)-1)
+
+biplot(pca_red_des, scale = 0, cex = 0.5, col = c("dodgerblue3", "deeppink3"), choices = c(1,2))
+
+
+
+##Screeplot
+
+fviz_screeplot(pca_red_des, addlabels = TRUE, ylim = c(0, 70))
+
+##Contribución de variables a componentes 1 y 2
+
+# Top 10 variables que más contribuyen a PC1
+fviz_contrib(pca_red_des, choice = "var", axes = 1, top = 10)
+
+# Top 10 variables que más contribuyen a PC2
+fviz_contrib(pca_red_des, choice = "var", axes = 2, top = 10)
+
+#Varianza explicada y acumulada
+
+PVE_des <- 100*pca_red_des$sdev^2/sum(pca_red_des$sdev^2)
+PVE_des
+
+par(mfrow = c(1,2))
+
+plot(PVE_des, type = "o", 
+     ylab = "PVE", 
+     xlab = "Componente principal", 
+     col = "blue")
+plot(cumsum(PVE_des), type = "o", 
+     ylab = "PVE acumulada", 
+     xlab = "Componente principal", 
+     col = "brown3")
+
+##Con función PCA
+respca_des<-PCA(data_pca_des, scale.unit = TRUE, ncp = 5, graph = TRUE)
+
+print(respca_des)
+
+##eigenvalues
+eig.val.des <- get_eigenvalue(respca_des) 
+eig.val.des
+
+##Screeplot
+
+fviz_eig(respca_des, addlabels = TRUE, ylim = c(0, 70))
+
+##Coordenadas componentes
+
+var_des <- get_pca_var(respca_des) 
+head(var_des$coord)
+
+# Cos2: calidad en el mapa factore
+head(var_des$cos2)
+
+# Aportes a los componentes principales
+head(var_des$contrib)
+
+#Coordenadas de variables
+head(var_des$coord, 6) 
+
+##Taza de variables:
+fviz_pca_var(respca_des, col.var = "black")
+
+head(var_des$cos2, 6)
+
+##Cos2 según corrplot
+
+corrplot(var_des$cos2, is.corr=FALSE)
+
+# Cos2 total de variables en Dim.1 y Dim.2
+fviz_cos2(respca_des, choice = "var", axes = 1:2)
+
+
+# Color por valores cos2: calidad en el mapa de factores
+fviz_pca_var(respca_des, col.var = "cos2",
+             gradient.cols = c("#00AFBB", "#E7B800", "#FC4E07"),
+             repel = TRUE # Evita la superposición de texto
+             )
+
+##Contribución 
+
+corrplot(var_des$contrib, is.corr=FALSE)
+fviz_pca_var(respca_des, col.var = "contrib",
+            gradient.cols = c("#00AFBB", "#E7B800", "#FC4E07")
+            )
+```
+
+## PCA red matrimonio
+
+```{r}
+
+head(results_list_marriage)
+
+print(colnames(results_list_marriage))
+
+# excluir las columnas "id" y "gcluster"
+cols_to_exclude <- c("id", "g.cluster")
+
+# Filtra las columnas que no estén en la lista de exclusiones y luego aplica la operación
+data_pca_mar <- results_list_marriage[, !(colnames(results_list_marriage) %in% cols_to_exclude)]
+
+data_pca_mar <- data_pca_mar[, apply(data_pca_mar, 2, var) != 0]  # Elimina las columnas con varianza cero
+pca_red_mar <- prcomp(data_pca_mar, scale = TRUE)
+
+# Muestra de los primeros 6 elementos del vector de loadings de los 5 primeros componentes
+head(pca_red_mar$rotation)[, 1:5]
+
+##Scores
+
+head(pca_red_mar$x)[,1:5]
+
+# Varianza explicada por cada componente
+pca_red_mar$sdev^2
+
+summary(pca_red_mar)
+
+##Invirtiendo los signos
+
+pca_red_mar$rotation <- -1*pca_red_mar$rotation
+pca_red_mar$rotation
+
+pca_red_mar$x <- -1*pca_red_mar$x
+pca_red_mar$x
+
+##Se visualizan los primeros 6 scores
+
+head(pca_red_mar$x)
+
+#biplot para visualizar los resultados
+biplot(pca_red_mar, scale = 0, choices = c(1,2))
+
+pca_red_mar$x[, c(1:2)] <- pca_red_mar$x[, c(1:2)]/sqrt(nrow(data_pca_mar)-1)
+
+biplot(pca_red_mar, scale = 0, cex = 0.5, col = c("dodgerblue3", "deeppink3"), choices = c(1,2))
+
+
+
+##Screeplot
+
+fviz_screeplot(pca_red_mar, addlabels = TRUE, ylim = c(0, 70))
+
+##Contribución de variables a componentes 1 y 2
+
+# Top 10 variables que más contribuyen a PC1
+fviz_contrib(pca_red_mar, choice = "var", axes = 1, top = 10)
+
+# Top 10 variables que más contribuyen a PC2
+fviz_contrib(pca_red_mar, choice = "var", axes = 2, top = 10)
+
+#Varianza explicada y acumulada
+
+PVE_mar <- 100*pca_red_mar$sdev^2/sum(pca_red_mar$sdev^2)
+PVE_mar
+
+par(mfrow = c(1,2))
+
+plot(PVE_mar, type = "o", 
+     ylab = "PVE", 
+     xlab = "Componente principal", 
+     col = "blue")
+plot(cumsum(PVE_mar), type = "o", 
+     ylab = "PVE acumulada", 
+     xlab = "Componente principal", 
+     col = "brown3")
+
+##Con función PCA
+respca_mar<-PCA(data_pca_mar, scale.unit = TRUE, ncp = 5, graph = TRUE)
+
+print(respca_mar)
+
+##eigenvalues
+eig.val.mar <- get_eigenvalue(respca_mar) 
+eig.val.mar
+
+##Screeplot
+
+fviz_eig(respca_mar, addlabels = TRUE, ylim = c(0, 70))
+
+##Coordenadas componentes
+
+var_mar <- get_pca_var(respca_mar) 
+head(var_mar$coord)
+
+# Cos2: calidad en el mapa factore
+head(var_mar$cos2)
+
+# Aportes a los componentes principales
+head(var_mar$contrib)
+
+#Coordenadas de variables
+head(var_mar$coord, 6) 
+
+##Taza de variables:
+fviz_pca_var(respca_mar, col.var = "black")
+
+head(var_mar$cos2, 6)
+
+##Cos2 según corrplot
+
+corrplot(var_mar$cos2, is.corr=FALSE)
+
+# Cos2 total de variables en Dim.1 y Dim.2
+fviz_cos2(respca_mar, choice = "var", axes = 1:2)
+
+
+# Color por valores cos2: calidad en el mapa de factores
+fviz_pca_var(respca_mar, col.var = "cos2",
+             gradient.cols = c("#00AFBB", "#E7B800", "#FC4E07"),
+             repel = TRUE # Evita la superposición de texto
+             )
+
+##Contribución 
+
+corrplot(var_mar$contrib, is.corr=FALSE)
+fviz_pca_var(respca_mar, col.var = "contrib",
+            gradient.cols = c("#00AFBB", "#E7B800", "#FC4E07")
+            )
+```
+
+## PCA red kinship
+
+```{r}
+
+head(results_list_kinship)
+
+print(colnames(results_list_kinship))
+
+# excluir las columnas "id" y "gcluster"
+cols_to_exclude <- c("id", "g.cluster")
+
+# Filtra las columnas que no estén en la lista de exclusiones y luego aplica la operación
+data_pca_kin <- results_list_kinship[, !(colnames(results_list_kinship) %in% cols_to_exclude)]
+
+data_pca_kin <- data_pca_kin[, apply(data_pca_kin, 2, var) != 0]  # Elimina las columnas con varianza cero
+pca_red_kin <- prcomp(data_pca_kin, scale = TRUE)
+
+# Muestra de los primeros 6 elementos del vector de loadings de los 5 primeros componentes
+head(pca_red_kin$rotation)[, 1:5]
+
+##Scores
+
+head(pca_red_kin$x)[,1:5]
+
+# Varianza explicada por cada componente
+pca_red_kin$sdev^2
+
+summary(pca_red_kin)
+
+##Invirtiendo los signos
+
+pca_red_kin$rotation <- -1*pca_red_kin$rotation
+pca_red_kin$rotation
+
+pca_red_kin$x <- -1*pca_red_kin$x
+pca_red_kin$x
+
+##Se visualizan los primeros 6 scores
+
+head(pca_red_kin$x)
+
+#biplot para visualizar los resultados
+biplot(pca_red_kin, scale = 0, choices = c(1,2))
+
+#pca_red_kin$x[, c(1:2)] <- pca_red_kin$x[, c(1:2)]/sqrt(nrow(pca_red_kin)-1)
+
+biplot(pca_red_kin, scale = 0, cex = 0.5, col = c("dodgerblue3", "deeppink3"), choices = c(1,2))
+
+
+
+##Screeplot
+
+fviz_screeplot(pca_red_kin, addlabels = TRUE, ylim = c(0, 70))
+
+##Contribución de variables a componentes 1 y 2
+
+# Top 10 variables que más contribuyen a PC1
+fviz_contrib(pca_red_kin, choice = "var", axes = 1, top = 10)
+
+# Top 10 variables que más contribuyen a PC2
+fviz_contrib(pca_red_kin, choice = "var", axes = 2, top = 10)
+
+#Varianza explicada y acumulada
+
+PVE_kin <- 100*pca_red_kin$sdev^2/sum(pca_red_kin$sdev^2)
+PVE_kin
+
+par(mfrow = c(1,2))
+
+plot(PVE_kin, type = "o", 
+     ylab = "PVE", 
+     xlab = "Componente principal", 
+     col = "blue")
+plot(cumsum(PVE_kin), type = "o", 
+     ylab = "PVE acumulada", 
+     xlab = "Componente principal", 
+     col = "brown3")
+
+##Con función PCA
+respca_kin<-PCA(data_pca_kin, scale.unit = TRUE, ncp = 5, graph = TRUE)
+
+print(respca_kin)
+
+##eigenvalues
+eig.val.kin <- get_eigenvalue(respca_kin) 
+eig.val.kin
+
+##Screeplot
+
+fviz_eig(respca_kin, addlabels = TRUE, ylim = c(0, 70))
+
+##Coordenadas componentes
+
+var_kin <- get_pca_var(respca_kin) 
+head(var_kin$coord)
+
+# Cos2: calidad en el mapa factore
+head(var_kin$cos2)
+
+# Aportes a los componentes principales
+head(var_kin$contrib)
+
+#Coordenadas de variables
+head(var_kin$coord, 6) 
+
+##Taza de variables:
+fviz_pca_var(respca_kin, col.var = "black")
+
+head(var_kin$cos2, 6)
+
+##Cos2 según corrplot
+
+corrplot(var_kin$cos2, is.corr=FALSE)
+
+# Cos2 total de variables en Dim.1 y Dim.2
+fviz_cos2(respca_kin, choice = "var", axes = 1:2)
+
+
+# Color por valores cos2: calidad en el mapa de factores
+fviz_pca_var(respca_kin, col.var = "cos2",
+             gradient.cols = c("#00AFBB", "#E7B800", "#FC4E07"),
+             repel = TRUE # Evita la superposición de texto
+             )
+
+##Contribución 
+
+corrplot(var_kin$contrib, is.corr=FALSE)
+fviz_pca_var(respca_kin, col.var = "contrib",
+            gradient.cols = c("#00AFBB", "#E7B800", "#FC4E07")
+            )
+```
