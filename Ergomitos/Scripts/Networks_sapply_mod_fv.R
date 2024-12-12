@@ -358,7 +358,6 @@ dependency_igraph <- foreach(i = unique_households,
   tryCatch(
     household_process(i, data),
     error = function(e) {
-      error.list <<-append(error.list,list(list(household_id,error_message=e$message)))
       message(paste("Error en el hogar", i, ":", e$message))
       return(list(household_id = i, dependency_net = NULL, warning = e$message))
     }

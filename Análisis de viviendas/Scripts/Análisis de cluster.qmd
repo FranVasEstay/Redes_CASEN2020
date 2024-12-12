@@ -1,0 +1,400 @@
+---
+title: "Análisis de cluster"
+author: "Ana Karen/Nicolás Montalva/Francisca Vásquez"
+format: html
+editor: visual
+---
+
+## Librerías
+
+```{r}
+
+library(dplyr) 
+library(devtools)
+library(funModeling)
+library(factoextra)
+library(corrplot)
+library(Hmisc)
+library(cluster)
+library(fpc)
+library(ggplot2)
+library(foreach)
+library(iterators)
+library(parallel)
+library(doParallel)
+
+
+##Instalar el paquete funModeling desde un repositorio de github
+#install.packages('funModeling')
+
+```
+
+## Datos
+
+```{r}
+load("Redes/tablas_redes.RData")
+```
+
+```{r}
+
+### Filtro de viviendas
+## Viviendas de tamaño 1 o 2
+
+viviendas_pequenas <- results_list_kinship %>% 
+  filter(size<3)
+
+## Viviendas de tamaño mayor o igual a 3
+
+viviendas_analisis <- results_list_kinship %>% 
+  filter(size>=3)
+
+set.seed(123)
+
+## Aquí tuve que sacar la variable g.cluster porque me arroja error al intentar hacer el análisis del número de grupos
+
+#muestra_kinship <- viviendas_analisis %>% 
+  #sample_n(size = 20000, replace = FALSE)
+
+## Marriage network
+results_list_marriage[sapply(results_list_marriage, is.nan)] <- 0
+
+##Data muestrada
+df_dep <- results_list_dependency %>%
+  as.data.frame()%>%
+  mutate(across(everything(), as.numeric))%>%
+  na.omit()
+df_dep <- df_dep[, apply(df_dep, 2, var) != 0]
+View(df_dep)
+df_des <- results_list_descent %>%
+  as.data.frame()%>%
+  mutate(across(everything(), as.numeric))%>%
+  na.omit()
+df_des <- df_des[, apply(df_des, 2, var) != 0]
+View(df_des)
+df_mar <- results_list_marriage %>%
+  as.data.frame()%>%
+  mutate(across(everything(), as.numeric))%>%
+  na.omit()
+df_mar <- df_mar[, apply(df_mar, 2, var) != 0]
+View(df_mar)
+df_kin <- results_list_kinship %>%
+  as.data.frame()%>%
+  mutate(across(everything(), as.numeric))%>%
+  na.omit()
+df_kin <- df_kin[, apply(df_kin, 2, var) != 0]
+View(df_kin)
+```
+
+## Redes
+
+### Red dependencia
+
+#### Análisis descriptivo
+
+```{r}
+
+#summary(results_list_kinship)
+
+#df_status(results_list_kinship)
+
+#plot_num(results_list_kinship)
+
+#profiling_num(results_list_kinship)
+```
+
+#### Distancias
+
+```{r}
+
+
+# Establecer el número de núcleos para el procesamiento en paralelo
+
+no_cores <- detectCores() - 1
+registerDoParallel(no_cores)
+
+
+##No puedo hacer esto porque me dice que supera la memoria
+
+#distancia <- dist(results_list_kinship, method = "euclidean")
+#fviz_dist(distancia)
+
+# probando el do parallel
+
+# Configurar el entorno paralelo
+no_cores <- detectCores() - 1
+registerDoParallel(no_cores)
+
+# Datos de ejemplo (reemplaza esto con tus datos reales)
+# results_list_kinship <- tu_dataframe
+
+# Dividir los datos en subconjuntos para el procesamiento paralelo
+total_observaciones <- nrow(results_list_kinship)
+num_subconjuntos <- 16  # Ajusta esto según la capacidad de tu sistema
+tamaño_subconjunto <- ceiling(total_observaciones / num_subconjuntos)
+
+# Lista para almacenar los resultados de cada subconjunto
+resultados_distancias <- list()
+
+# Usar foreach para calcular distancias en paralelo
+resultados_distancias <- foreach(subset_idx = 1:num_subconjuntos, .combine = 'c') %dopar% {
+  start_row <- (subset_idx - 1) * tamaño_subconjunto + 1
+  end_row <- min(subset_idx * tamaño_subconjunto, total_observaciones)
+  
+  subset_data <- results_list_kinship[start_row:end_row, ]
+  as.vector(dist(subset_data, method = "euclidean"))
+}
+
+# Combina los resultados (Este paso puede requerir ajustes específicos)
+# distancia_combinada <- función_para_combinar(resultados_distancias)
+
+# Detener el clúster paralelo
+stopImplicitCluster()
+
+#corrplot(as.matrix(resultados_distancias),is.corr = FALSE, method = "color")
+
+#corrplot(as.matrix(distancia), is.corr = FALSE,method = "color",order = "hclust", type = "upper")
+
+#distan <- as.matrix(distancia)
+#heatmap(distan, xlab = "Hogares",ylab = "Hogares",main = "Mapa de calor")
+```
+
+#### Número de grupos
+
+Una forma sencilla de estimar el número *K* óptimo de clusters es aplicar el algoritmo de K-means para un rango de valores de *K* e identificar aquel valor a partir del cual la reducción en la suma total de varianza intra-cluster deja de ser significativa. A esta estrategia se la conoce como método del codo o *elbow method*.
+
+```{r}
+
+muestra_kinship <- results_list_kinship[complete.cases(results_list_kinship), ]
+muestra_kinship <- lapply(muestra_kinship, function(x) ifelse(is.nan(x), NA, x))
+muestra_kinship <- as.data.frame(muestra_kinship)
+num <- (nrow(muestra_kinship)-1)*sum(apply(muestra_kinship,2,var))
+for (i in 2:15) num[i] <- sum(kmeans(muestra_kinship,
+   centers=i)$withinss)
+num
+
+plot(1:15, 
+     num, 
+     type="b", 
+     xlab="Numero de Clusters",  
+     ylab="Suma de cuadrados dentro de grupos",
+     col="red",
+     lwd=2)
+```
+
+#### Prueba con todas las viviendas mayor o igual que 3
+
+```{r}
+
+viviendas_analisis_kin <- viviendas_analisis[complete.cases(viviendas_analisis), ]
+viviendas_analisis_kin <- lapply(viviendas_analisis_kin, function(x) ifelse(is.nan(x), NA, x))
+viviendas_analisis_kin <- as.data.frame(viviendas_analisis_kin)
+num <- (nrow(viviendas_analisis_kin)-1)*sum(apply(viviendas_analisis_kin,2,var))
+for (i in 2:15) num[i] <- sum(kmeans(viviendas_analisis_kin,
+   centers=i)$withinss)
+num
+
+plot(1:15, 
+     num, 
+     type="b", 
+     xlab="Numero de Clusters",  
+     ylab="Suma de cuadrados dentro de grupos",
+     col="red",
+     lwd=2)
+```
+
+#### K-means
+
+K-medias es un algoritmo de aprendizaje no supervisado que tiene como objetivo generar una partición de un conjunto de n observaciones en k grupos. Cada grupo se representa por la media de los puntos que lo componen. El representante de cada grupo se denomina *centroide*. La cantidad de grupos "k", se debe establecer de antemano. El método de clustering comienza con k centroides ubicados de forma aleatoria, y asigna cada observación al centroide más cercano. Clasifica objetos en múltiples grupos (conglomerados), de modo que los objetos dentro del mismo conglomerado son lo más similares posible mientras que los objetos de diferentes conglomerados son lo más diferentes posible. En el agrupamiento de k-medias, cada grupo está representado por su centro (es decir, centroide) que corresponde a la media de los puntos asignados al grupo. El método comienza con k centroides ubicados de forma aleatoria, y asigna cada observación al centroide más cercano. Se minimiza la suma total de cuadrados intra-cluster (suma de las distancias al cuadrado de cada observación respecto a su centroide)
+
+```{r}
+##Establecí 4 según lo visto en el plot anterior
+grupos_dep<-kmeans(df_dep,4)
+grupos_des<-kmeans(df_des,4)
+grupos_mar<-kmeans(df_mar,4)
+grupos_kin<-kmeans(df_kin,4)
+grupos_kin #ESTE
+
+##Entega cuántas de las 1000 viviendas estarían en cada grupo
+grupos_dep$size
+grupos_des$size
+grupos_mar$size
+grupos_kin$size
+##Esto no me resulta como en el ejemplo (***Revisar)
+cl_dep<-data.frame(grupos_dep$cluster)
+cl_des<-data.frame(grupos_des$cluster)
+cl_mar<-data.frame(grupos_mar$cluster)
+cl_kin<-data.frame(grupos_kin$cluster)
+
+##Calcula la media de las columnas de muestra_dependency agrupadas por los valores en la columna cluster del dataframe grupos
+aggregate(df_dep,by=list(grupos_dep$cluster),FUN=mean)
+
+## Cada punto es una vivienda y está coloreada según el cluster al cual pertenece
+#plot(muestra_kinship, col = grupos$cluster)
+#points(grupos$centers, col = 1:5, pch = 8)
+
+##Esto me da error porque me da a entender que no hay variabilidad 
+#clusplot(results_list_kinship_sample,grupos_kin$cluster,color=TRUE,shade=TRUE,labels=2, lines=0)
+
+#plotcluster(muestra_kinship, grupos$cluster)
+
+## Deberóa mostrarnos las medidas de resumen de los distintos cluster
+resu_dep <- pamk(df_dep,4);resu_dep
+resu_des <- pamk(df_des,4);resu_des
+resu_mar <- pamk(df_mar,4);resu_mar
+resu_kin <- pamk(df_kin,4);resu_kin
+#layout(matrix(c(1, 2), 1, 2))
+
+## me dice que la variable es contante :(
+plot(resu_mar$pamobject)
+fviz_cluster(grupos_mar,data = df_mar)
+
+```
+
+#### Guardar información de Cluster
+
+Guardar la información de cluster en la tabla de redes para ocupar en el análisis de correspondencias.
+
+```{r}
+results_list_dependency<-cbind(df_dep,cl_dep)
+results_list_descent<-cbind(df_des,cl_des)
+results_list_marriage<-cbind(df_mar,cl_mar)
+results_list_kinship<-cbind(df_kin,cl_kin)
+tablas_redes <- c("results_list_dependency","results_list_descent","results_list_kinship","results_list_marriage")
+save(list=tablas_redes,file = "Redes/tablas_redes_cluster.RData")
+```
+
+#### Prueba para viviendas de tamaño mayor o igual a 3
+
+```{r}
+
+##Establecí 4 según lo visto en el plot anterior
+
+grupos<-kmeans(viviendas_analisis_kin,4)
+grupos #ESTE
+
+##Entega cuántas de las 100 viviendas estarían en cada grupo
+grupos$size
+
+##Esto no me resulta como en el ejemplo (***Revisar)
+data.frame(grupos$cluster)
+
+
+##Calcula la media de las columnas de muestra_dependency agrupadas por los valores en la columna cluster del dataframe grupos
+aggregate(viviendas_analisis_kin,by=list(grupos$cluster),FUN=mean)
+
+## Cada punto es una vivienda y está coloreada según el cluster al cual pertenece
+#plot(muestra_kinship, col = grupos$cluster)
+#points(grupos$centers, col = 1:5, pch = 8)
+
+##Esto me da error porque me da a entender que no hay variabilidad 
+#clusplot(muestra_kinship,grupos$cluster,color=TRUE,shade=TRUE,labels=2, lines=0)
+
+#plotcluster(muestra_kinship, grupos$cluster)
+
+## Deberóa mostrarnos las medidas de resumen de los distintos cluster
+resu <- pamk(viviendas_analisis_kin,4);resu
+resu
+
+#layout(matrix(c(1, 2), 1, 2))
+
+## me dice que la variable es contante :(
+#plot(resu$pamobject)
+
+```
+
+#### Cluster jerárquico
+
+Este método de manera iterativa agrupa observaciones basado en sus distancias hasta que cada observación pertenece a un grupo más grande.
+
+No requiere especificación previa de clusters
+
+### Debo solucionar esto que sigue
+
+```{r}
+
+##cluster jerarquico
+#dis <- dist(muestra_kinship, method = "euclidean");dis
+
+##cluster jerarquico para todas las viviendas (la memoria se agota)
+dis <- dist(viviendas_analisis, method = "euclidean");dis
+
+## Probando el Doparallel
+
+# Dividir el conjunto de datos en subconjuntos
+n <- nrow(viviendas_analisis)
+num_subconjuntos <- 8  # Ajusta este número según tu sistema
+tamaño_subconjunto <- ceiling(n / num_subconjuntos)
+
+no_cores <- detectCores() - 1
+registerDoParallel(no_cores)
+
+resultados_distancias <- foreach(subset_idx = 1:num_subconjuntos, .combine = 'c') %dopar% {
+  start_row <- (subset_idx - 1) * tamaño_subconjunto + 1
+  end_row <- min(subset_idx * tamaño_subconjunto, n)
+  
+  subset_data <- viviendas_analisis[start_row:end_row, ]
+  as.vector(dist(subset_data, method = "euclidean"))
+}
+
+## combinar distancias
+
+# Suponiendo que `resultados_distancias` es una lista de vectores de distancias
+# y cada vector representa las distancias dentro de un subconjunto
+
+n <- nrow(viviendas_analisis)
+distancia_total <- matrix(NA, n, n)  # Crear una matriz vacía
+
+inicio_fila <- 1
+for(i in 1:length(resultados_distancias)) {
+    distancias <- resultados_distancias[[i]]
+    fin_fila <- inicio_fila + length(distancias) - 1
+    
+    # Rellenar la matriz
+    distancia_total[inicio_fila:fin_fila, inicio_fila:fin_fila] <- distancias
+    
+    inicio_fila <- fin_fila + 1
+}
+
+# Ahora `distancia_total` contiene las distancias combinadas
+
+```
+
+#### Gráficos cluster jerárquicos
+
+```{r}
+
+gru <- hclust(dis, method="ward.D") ;gru
+plot(gru)
+
+group <- cutree(gru, k=4);group
+plot(gru)
+
+
+```
+
+```{r}
+
+gru <- hclust(dis, method = "ward.D")
+gru #ESTE
+plot(gru)  # Llamada a plot() para inicializar el lienzo de gráficos
+rect.hclust(gru, k = 4, border = "red")
+
+```
+
+```{r}
+
+data <- muestra_kinship[, apply(muestra_kinship, 2, var) != 0]
+scaled_data <- scale(data)
+pca_result <- prcomp(scaled_data, scale. = FALSE, center = FALSE)
+
+
+pam.res <- pam(data, k = 5)  
+
+# Llamada a la función sin usar el operador '+'
+cluster_plot <- factoextra::fviz_cluster(pam.res, geom = "point", ellipse.type = "norm",
+                                         show.clust.cent = TRUE, star.plot = TRUE,
+                                         title = "Resultados clustering K-means", theme = theme_bw())
+
+# Mostrar el gráfico
+print(cluster_plot)
+```
