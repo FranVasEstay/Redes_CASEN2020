@@ -42,7 +42,7 @@ data<- ori_Casen2020_STATA %>%
     r1b_pais_esp = ifelse(r1b_pais_esp == "", 1,
                           ifelse(r1b_pais_esp == "NO RESPONDE", 3, 2))
   )
-save(data, file = "/Ergomitos/Data/Data.RData")
+save(data, file = "Ergomitos/Data/Data.RData")
 data <- data %>%
   mutate_all(~ ifelse(is.na(.), "No_aplica", .))
 ########################### CREACION DE REDES ##################################
