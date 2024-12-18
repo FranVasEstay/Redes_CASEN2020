@@ -28,6 +28,15 @@ library(network)
 ##################### ADMINISTRACIÓN DE LOS DATOS ##############################
 load("Data/ori_Casen2020_rdata.RData")
 
+###Integración de nuevas variables
+#e6a nivel educativo
+#o1 trabajó la semana pasada
+#r1b_pais_esp nacionalidad
+#r3 pueblo indígena
+#s17 tuvo consulta médica
+#s28 ha estado en tratamiento médico (12 meses)
+#y1 Monto sueldo líquido
+#y1_preg Recibió sueldo
 data<- ori_Casen2020_STATA %>%
   select(id_vivienda, id_persona, edad, sexo,e6a,o1,r1b_pais_esp, pco1, h5, ecivil, h5_1, h5_2, r1b_pais_esp,nucleo, pco2, r3,s17,s28,y1,y1_preg, comuna, region) %>%
   filter(!id_vivienda %in% c(8102104907, 6106100505, 9115300202)) %>%

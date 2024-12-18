@@ -14,8 +14,8 @@ paquetes <- c("FactoMineR", "tidyverse", "factoextra", "haven", "naniar", "corrp
 libraries(paquetes)
 
 ###### CARGAR DATA ######
-load("Descriptives/medidas_redes.RData")
-load("Redes/tablas_redes_cluster.RData")
+load("Análisis de viviendas/Descriptives/medidas_redes.RData")
+load("Ergomitos/Redes/tablas_redes_cluster.RData")
 
 ##################### ADMINISTRACIÓN DE LOS DATOS ##############################
 # Crea tipología de vivienda a partir de indices en measurements
@@ -59,7 +59,7 @@ dummy_measurements <- measurements %>%
                             labels = c("Jovenes","Adultos","Tercera edad", "Cuarta edad"), 
                             include.lowest = TRUE))
 stopCluster(cl)
-
+ 
 save(dummy_measurements,file="Data/Dummy_measurements_mca.RData")
 
 ###Utiliza set de la data ###
@@ -68,10 +68,10 @@ cl <- parallel::makeCluster(ncores)
 registerDoParallel(cl)
 set.seed(400)  # Fijar semilla para reproducibilidad
 id_vivienda_sample <- sample(unique(data$household), size =1000,replace = F)# Crear subset con los 1000 id_vivienda seleccionados
-ddummy_measurements_subset <- dummy_measurements %>%
+dummy_measurements_subset <- dummy_measurements %>%
   filter(household %in% id_vivienda_sample) %>%
   stopCluster(cl)
-save(dummy.data, file = "Data/Dummy_measurements_sample_mca.RData")
+save(dummy.data, file = "Análisis de viviendas/Data/Dummy_measurements_sample_mca.RData")
 
 
 ####################### MCA PRELIMINAL #########################################
