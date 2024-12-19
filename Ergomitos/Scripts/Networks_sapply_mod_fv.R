@@ -299,15 +299,14 @@ household_process <- function(i, data) {
   # Crear nodos y aristas
   nodes_list <- tibble(household_id_persona = as.character(household_i$id_persona))
   
-  edge_dependency <- tibble(
-    from = as.character(household_i$h5_2),
-    to = as.character(household_i$id_persona)
-  ) %>%
-    filter(from != "0" & from != "") %>%
-    mutate(to = as.character(to))
-  
+  edge_dependency <- tibble(from = household_i$h5_2, to = household_i$id_persona)
+  edge_dependency <- edge_dependency[which(edge_dependency$from != 0),]
+  edge_dependency$to <- as.character(edge_dependency$to)
+  edge_dependency$from <- as.character(edge_dependency$from)
   edge_dependency$type <- "econ_support"
   edge_dependency$color <- 2
+  edge_dependency <- edge_dependency[edge_dependency$from %in% nodes_list$household_id_persona & 
+                                       edge_dependency$to %in% nodes_list$household_id_persona, ]
   
   # Variables para los nodos
   myvars <- c("id_persona", "sex", "edad", "ecivil", "e6a", "o1", "r1b_pais_esp", "r3", "s17", "s28", "y1", "y1_preg", "region", "comuna")
@@ -375,7 +374,7 @@ failed_graphs <- dependency_igraph[sapply(dependency_igraph, function(x) is.null
 # Resultados finales
 message("Total hogares procesados: ", length(unique(data$household)))
 message("Total hogares completos: ", length(successful_graphs))
-message("Total hogares fallidos: ", length(failed_graphs)) #93 fallidos
+message("Total hogares fallidos: ", length(failed_graphs))
 
 # Guardar los resultados en un archivo
 save(successful_graphs, file = "Redes/dependency_igraph.RData")
