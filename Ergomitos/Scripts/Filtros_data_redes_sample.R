@@ -50,95 +50,21 @@ data_filtrada<- ori_Casen2020_STATA %>%
 
 length(unique(data_filtrada$household)) #son 31843 viviendas
 
-save(data_filtrada, file = "Ergomitos/Data/Data_filtrada.RData")
-
-# Calcular casos completos
-casos_completos <- data_filtrada %>%
-  split(.$household) %>% # Dividir por vivienda
-  lapply(function(household_data) {
-    all(!apply(is.na(household_data), 1, any)) # Verificar si todas las filas están completas
-  }) %>%
-  unlist() %>%       # Convertir la lista a un vector
-  which(.) %>%       # Encontrar índices con TRUE
-  names() %>% 
-  as.numeric()       # Convertir nombres a numéricos
-
-# Resultados
-cat("Viviendas con casos completos (sin NA):\n")
-print(casos_completos) #no hay ninguna vivienda que no tenga Nas
-
-tabla_nas <- data_filtrada %>%
-  group_by(household) %>%
-  summarise(across(everything(), ~ sum(is.na(.)), .names = "na_{.col}")) %>%
-  pivot_longer(cols = -household, names_to = "variable", values_to = "n_na") %>%
-  pivot_wider(names_from = variable, values_from = n_na) # Reorganizar para que cada variable sea una columna
-View(tabla_nas)
-summary(tabla_nas)
-
-# Identificar variables sin NAs (donde todas las viviendas tienen 0 NA en esa variable)
-variables_sin_nas <- tabla_nas %>%
-  select(-household) %>%  # Excluir la columna 'household'
-  summarise(across(everything(), ~ all(. == 0))) %>%  # Verificar si todas las celdas son 0 (sin NA)
-  pivot_longer(cols = everything(), names_to = "variable", values_to = "sin_na") %>%
-  filter(sin_na == TRUE)  # Filtrar las variables que tienen solo ceros (sin NA)
-
-# Resultados
-cat("Variables sin NAs (sin valores distintos a 0):\n")
-print(variables_sin_nas) #edad,sexo, nivel educativo,nacionalidad,pueblo indígena,ha estado en tratamiento en los 12 ultimos meses.
-
 #Cambiar NAs por 0
 data_filtrada <- data_filtrada %>%
   mutate_all(~ ifelse(is.na(.), 0, .))
 
-#Cuales hogares presentan variación
-variacion_respuestas <- data %>%
-  group_by(household) %>%
-  summarise(across(everything(), ~ n_distinct(., na.rm = TRUE) > 1)) %>%
-  rowwise() %>%
-  mutate(tiene_variacion = any(c_across(-household))) %>%
-  filter(tiene_variacion) %>%
-  select(household)
-
-cat("\nViviendas con variación en las respuestas:\n")
-print(variacion_respuestas)
-total_viviendas <- n_distinct(data$household)
-viviendas_con_variacion <- nrow(variacion_respuestas)
-porcentaje_variacion <- (viviendas_con_variacion / total_viviendas) * 100
-
-# Mostrar el porcentaje
-cat("\nPorcentaje de viviendas con variación en las respuestas:", round(porcentaje_variacion, 2), "%\n")
-
-# Crear tabla de variación por vivienda (porcentaje de variables con variación)
-frecuencia_variacion <- data %>%
-  group_by(household) %>%  # Agrupar por cada vivienda
-  summarise(across(everything(), ~ n_distinct(., na.rm = TRUE), .names = "var_{.col}")) %>%
-  mutate(variacion = rowSums(across(starts_with("var_"), ~ . > 1))) %>% 
-  mutate(variacion_porcentaje = (variacion / (ncol(.) - 1)) * 100) %>% 
-  select(household, variacion_porcentaje)
-
-# Mostrar el resultado
-cat("\nFrecuencia porcentual de la variación por vivienda:\n")
-print(frecuencia_variacion)
-
-# Calcular el porcentaje de variación por cada variable en cada hogar
-tabla_frecuencia_variacion <- data %>%
-  group_by(household) %>% 
-  summarise(across(everything(), 
-                   ~ mean(n_distinct(.)) / n() * 100, 
-                   .names = "variacion_{.col}")) %>%  
-  ungroup()  
-
-# Mostrar la tabla de frecuencias de variación porcentual
-cat("\nPorcentaje de variación por variable en cada hogar:\n")
-View(tabla_frecuencia_variacion)
-
-save(data_filtrada, file = "Ergomitos/Data/Data_filtrada.RData")
+##Subset 100 viviendas
+set.seed(400)  # Fijar semilla para reproducibilidad
+id_vivienda_sample <- sample(unique(data$household), size =100,replace = F)
+# Crear subset con los 1000 id_vivienda seleccionados
+data_sample <- data_filtrada %>%
+  filter(household %in% id_vivienda_sample)
+# Verificar el número de filas en el subset
+nrow(data_sample)
+length(unique(data_sample$household))
 
 ########################### CREACION DE REDES ##################################
-load("Ergomitos/Data/Data_filtrada.RData")
-#Cambiar NAs por 0
-data <- data_filtrada %>%
-  mutate_all(~ ifelse(is.na(.), 0, .))
 ########################## RED DE DESCENDENCIA #################################
 # Establecer el número de núcleos para el procesamiento en paralelo
 num_cores <- detectCores() - 1
@@ -146,8 +72,8 @@ cl <- parallel::makeCluster(num_cores) # Corrige 'ncores' por 'num_cores'
 registerDoParallel(cl)
 start.time <- Sys.time()
 
-household_process <- function(i, data) {
-  household_i <- data[data$household == i, ]
+household_process <- function(i, data_sample) {
+  household_i <- data_sample[data_sample$household == i, ]
   
   # Crear lista de nodos con id_persona
   nodes_list <- tibble(household_id_persona = as.character(household_i$id_persona))
@@ -203,14 +129,14 @@ household_process <- function(i, data) {
   return(grafo)
 }
 
-unique_households <- unique(data$household)
+unique_households <- unique(data_sample$household)
 
 # Usar foreach para ejecutar en paralelo
 descent_igrpah_filtred <- foreach(i = unique_households, .packages = c(
   "tidyverse", "igraph", "haven", "tibble", "reshape2", "tryCatchLog",
   "futile.logger", "dplyr", "tidyr", "doParallel", "iterators", "parallel", "progress"
 )) %dopar% {
-  household_process(i, data)
+  household_process(i, data_sample)
 }
 
 end.time <- Sys.time()
@@ -220,15 +146,15 @@ time.taken_parallel
 
 successful_graphs <- descent_igrpah_filtred[!sapply(descent_igrpah_filtred, is.null)]
 failed_graphs <- descent_igrpah_filtred[sapply(descent_igrpah_filtred, is.null)]
-unprocessed_households <- setdiff(unique(data$household), names(successful_graphs))
+unprocessed_households <- setdiff(unique(data_sample$household), names(successful_graphs))
 
 # Resultados finales
-message("Total hogares procesados: ", length(unique(data$household)))
+message("Total hogares procesados: ", length(unique(data_sample$household)))
 message("Total hogares completos: ", length(successful_graphs))
 message("Total hogares fallidos: ", length(failed_graphs))
 
 # Guardar los resultados en un archivo
-save(descent_igrpah_filtred, file = paste0("Ergomitos/Redes/descent_igrpah_filtrados.RData"))
+save(descent_igrpah_filtred, file = paste0("Ergomitos/Redes/descent_igrpah_filtrados_subset100.RData"))
 beep(1)
 
 #Creamos una lista en formato Network
@@ -239,7 +165,7 @@ descent_network_filtred <- lapply(a, function(j) {
   j
 })
 
-save(descent_network_filtred, file = paste0("Ergomitos/Redes/descent_network_filtrados.RData"))
+save(descent_network_filtred, file = paste0("Ergomitos/Redes/descent_network_filtrados_subset100.RData"))
 beep(8)
 
 ########################## RED DE MATRIMONIO ###################################
@@ -253,9 +179,9 @@ start.time <- Sys.time()
 options("tryCatchLog.write.error.dump.file" = TRUE)
 
 # Función para procesar cada hogar
-household_process <- function(i, data) {
+household_process <- function(i, data_sample) {
   # Filtrar datos del hogar
-  household_i <- data[which(data$household == i), ]
+  household_i <- data_sample[which(data_sample$household == i), ]
   
   # Validar si hay datos
   if (nrow(household_i) == 0) {
@@ -305,42 +231,42 @@ household_process <- function(i, data) {
   
   # Asignar atributos a los nodos
   covariates <- covariates[order(covariates$id_persona), ]
-  V(marriage_net)$sex <- as.integer(covariates$sex)
-  V(marriage_net)$edad <- as.integer(covariates$edad)
-  V(marriage_net)$e6a <- as.character(covariates$e6a)
-  V(marriage_net)$o1 <- as.character(covariates$o1)
-  V(marriage_net)$r1b_pais_esp <- as.integer(covariates$r1b_pais_esp)
-  V(marriage_net)$ecivil <- as.character(covariates$ecivil)
-  V(marriage_net)$r3 <- as.character(covariates$r3)
-  V(marriage_net)$s17 <- as.character(covariates$s17)
-  V(marriage_net)$s28 <- as.character(covariates$s28)
-  V(marriage_net)$y1 <- as.character(covariates$y1)
-  V(marriage_net)$y1_preg <- as.character(covariates$y1_preg)
-  V(marriage_net)$comuna <- as.character(covariates$comuna)
-  V(marriage_net)$region <- as.character(covariates$region)
+  V(marriage_net)$sex <- as.numeric(covariates$sex)
+  V(marriage_net)$edad <- as.numeric(covariates$edad)
+  V(marriage_net)$e6a <- as.numeric(covariates$e6a)
+  V(marriage_net)$o1 <- as.numeric(covariates$o1)
+  V(marriage_net)$r1b_pais_esp <- as.numeric(covariates$r1b_pais_esp)
+  V(marriage_net)$ecivil <- as.numeric(covariates$ecivil)
+  V(marriage_net)$r3 <- as.numeric(covariates$r3)
+  V(marriage_net)$s17 <- as.numeric(covariates$s17)
+  V(marriage_net)$s28 <- as.numeric(covariates$s28)
+  V(marriage_net)$y1 <- as.numeric(covariates$y1)
+  V(marriage_net)$y1_preg <- as.numeric(covariates$y1_preg)
+  V(marriage_net)$comuna <- as.numeric(covariates$comuna)
+  V(marriage_net)$region <- as.numeric(covariates$region)
   
   return(list(household_id = i, marriage_net = marriage_net, warning = NULL))
 }
 
 # Usar foreach para ejecutar en paralelo
-marriage_igraph_filtred <- foreach(i = unique(data$household),
-                           .packages = c(
-                             "tidyverse",
-                             "igraph",
-                             "haven",
-                             "tibble",
-                             "reshape2",
-                             "tryCatchLog",
-                             "futile.logger",
-                             "dplyr",
-                             "tidyr",
-                             "doParallel",
-                             "iterators",
-                             "parallel",
-                             "progress")
+marriage_igraph_filtred <- foreach(i = unique(data_sample$household),
+                                   .packages = c(
+                                     "tidyverse",
+                                     "igraph",
+                                     "haven",
+                                     "tibble",
+                                     "reshape2",
+                                     "tryCatchLog",
+                                     "futile.logger",
+                                     "dplyr",
+                                     "tidyr",
+                                     "doParallel",
+                                     "iterators",
+                                     "parallel",
+                                     "progress")
 ) %dopar% {
   tryCatch(
-    household_process(i, data),
+    household_process(i, data_sample),
     error = function(e) {
       message(paste("Error en el hogar", i, ":", e$message))
       return(list(household_id = i, marriage_net = NULL, warning = e$message))
@@ -357,13 +283,13 @@ successful_graphs <- marriage_igraph_filtred[!sapply(marriage_igraph_filtred, fu
 failed_graphs <- marriage_igraph_filtred[sapply(marriage_igraph_filtred, function(x) is.null(x$marriage_net))]
 
 # Resultados finales
-message("Total hogares procesados: ", length(unique(data$household)))
+message("Total hogares procesados: ", length(unique(data_sample$household)))
 message("Total hogares completos: ", length(successful_graphs))
 message("Total hogares fallidos: ", length(failed_graphs))
 
 # Guardar los resultados en un archivo
-save(successful_graphs, file = "Ergomitos/Redes/marriage_igraph_filtred.RData")
-
+save(successful_graphs, file = "Ergomitos/Redes/marriage_igraph_filtred_subset100.RData")
+beep(1)
 #Creamos una lista en formato Network
 
 a <- marriage_igraph_filtred
@@ -374,8 +300,8 @@ marriage_network_filtred <- lapply(a, function(j) {
   j
 })
 
-save(marriage_network_filtred, file = paste0("Ergomitos/Redes/marriage_network_filtred.RData"))
-
+save(marriage_network_filtred, file = paste0("Ergomitos/Redes/marriage_network_filtred_subset100.RData"))
+beep(5)
 # Establecer el número de núcleos para el procesamiento en paralelo
 num_cores <- detectCores() - 1
 cl <- parallel::makeCluster(num_cores)
@@ -384,8 +310,8 @@ registerDoParallel(cl)
 start.time <- Sys.time()
 error.list<-list()
 
-household_process <- function(i, data) {
-  household_i <- data[which(data$household == i), ]
+household_process <- function(i, data_sample) {
+  household_i <- data_sample[which(data_sample$household == i), ]
   
   # Crear nodos y aristas
   nodes_list <- tibble(household_id_persona = as.character(household_i$id_persona))
@@ -410,44 +336,44 @@ household_process <- function(i, data) {
   
   # Asignar atributos a los nodos
   covariates <- covariates[order(covariates$id_persona), ]
-  V(dependency_net)$sex <- as.integer(covariates$sex)
-  V(dependency_net)$edad <- as.integer(covariates$edad)
-  V(dependency_net)$e6a <- as.character(covariates$e6a)
-  V(dependency_net)$o1 <- as.character(covariates$o1)
-  V(dependency_net)$r1b_pais_esp <- as.integer(covariates$r1b_pais_esp)
-  V(dependency_net)$ecivil <- as.character(covariates$ecivil)
-  V(dependency_net)$r3 <- as.character(covariates$r3)
-  V(dependency_net)$s17 <- as.character(covariates$s17)
-  V(dependency_net)$s28 <- as.character(covariates$s28)
-  V(dependency_net)$y1 <- as.character(covariates$y1)
-  V(dependency_net)$y1_preg <- as.character(covariates$y1_preg)
-  V(dependency_net)$comuna <- as.character(covariates$comuna)
-  V(dependency_net)$region <- as.character(covariates$region)
+  V(dependency_net)$sex <- as.numeric(covariates$sex)
+  V(dependency_net)$edad <- as.numeric(covariates$edad)
+  V(dependency_net)$e6a <- as.numeric(covariates$e6a)
+  V(dependency_net)$o1 <- as.numeric(covariates$o1)
+  V(dependency_net)$r1b_pais_esp <- as.numeric(covariates$r1b_pais_esp)
+  V(dependency_net)$ecivil <- as.numeric(covariates$ecivil)
+  V(dependency_net)$r3 <- as.numeric(covariates$r3)
+  V(dependency_net)$s17 <- as.numeric(covariates$s17)
+  V(dependency_net)$s28 <- as.numeric(covariates$s28)
+  V(dependency_net)$y1 <- as.numeric(covariates$y1)
+  V(dependency_net)$y1_preg <- as.numeric(covariates$y1_preg)
+  V(dependency_net)$comuna <- as.numeric(covariates$comuna)
+  V(dependency_net)$region <- as.numeric(covariates$region)
   
   return(list(household_id = i, dependency_net = dependency_net, warning = NULL))
 }
 
-unique_households <- unique(data$household)
+unique_households <- unique(data_sample$household)
 
 # Usar foreach para ejecutar en paralelo
 dependency_igraph_filtred <- foreach(i = unique_households,
-                             .packages = c(
-                               "tidyverse",
-                               "igraph",
-                               "haven",
-                               "tibble",
-                               "reshape2",
-                               "tryCatchLog",
-                               "futile.logger",
-                               "dplyr",
-                               "tidyr",
-                               "doParallel",
-                               "iterators",
-                               "parallel",
-                               "progress")
+                                     .packages = c(
+                                       "tidyverse",
+                                       "igraph",
+                                       "haven",
+                                       "tibble",
+                                       "reshape2",
+                                       "tryCatchLog",
+                                       "futile.logger",
+                                       "dplyr",
+                                       "tidyr",
+                                       "doParallel",
+                                       "iterators",
+                                       "parallel",
+                                       "progress")
 ) %dopar% {
   tryCatch(
-    household_process(i, data),
+    household_process(i, data_sample),
     error = function(e) {
       message(paste("Error en el hogar", i, ":", e$message))
       return(list(household_id = i, dependency_net = NULL, warning = e$message))
@@ -464,8 +390,8 @@ num_cores <- detectCores()-1
 registerDoParallel(cores = num_cores)
 start.time <- Sys.time()
 
-household_process <- function(i, data) {
-  household_i <- data[which(data$household == i),]
+household_process <- function(i, data_sample) {
+  household_i <- data_sample[which(data_sample$household == i),]
   
   
   nodes_list <- tibble(household_id_persona = as.character(household_i$id_persona))
@@ -494,48 +420,48 @@ household_process <- function(i, data) {
   dependency_net <- graph_from_data_frame(d = edge_dependency, vertices = nodes, directed = TRUE)
   
   covariates <- covariates[order(covariates$id_persona),]
-  V(dependency_net)$sex <- as.integer(covariates$sex)
-  V(dependency_net)$edad <- as.integer(covariates$edad)
-  V(dependency_net)$e6a <- as.character(covariates$e6a)
-  V(dependency_net)$o1 <- as.character(covariates$o1)
-  V(dependency_net)$r1b_pais_esp <- as.integer(covariates$r1b_pais_esp)
-  V(dependency_net)$ecivil <- as.character(covariates$ecivil)
-  V(dependency_net)$r3 <- as.character(covariates$r3)
-  V(dependency_net)$s17 <- as.character(covariates$s17)
-  V(dependency_net)$s28 <- as.character(covariates$s28)
-  V(dependency_net)$y1 <- as.character(covariates$y1)
-  V(dependency_net)$y1_preg <- as.character(covariates$y1_preg)
-  V(dependency_net)$comuna <- as.character(covariates$comuna)
-  V(dependency_net)$region <- as.character(covariates$region)
+  V(dependency_net)$sex <- as.numeric(covariates$sex)
+  V(dependency_net)$edad <- as.numeric(covariates$edad)
+  V(dependency_net)$e6a <- as.numeric(covariates$e6a)
+  V(dependency_net)$o1 <- as.numeric(covariates$o1)
+  V(dependency_net)$r1b_pais_esp <- as.numeric(covariates$r1b_pais_esp)
+  V(dependency_net)$ecivil <- as.numeric(covariates$ecivil)
+  V(dependency_net)$r3 <- as.numeric(covariates$r3)
+  V(dependency_net)$s17 <- as.numeric(covariates$s17)
+  V(dependency_net)$s28 <- as.numeric(covariates$s28)
+  V(dependency_net)$y1 <- as.numeric(covariates$y1)
+  V(dependency_net)$y1_preg <- as.numeric(covariates$y1_preg)
+  V(dependency_net)$comuna <- as.numeric(covariates$comuna)
+  V(dependency_net)$region <- as.numeric(covariates$region)
   
   
   grafo <- list(household_i = i, dependency_net = dependency_net)
   return(grafo)
 }
 
-unique_households <- unique(data$household)
+unique_households <- unique(data_sample$household)
 
 # Usar foreach para ejecutar en paralelo. Acá cambié el nombre para evitar cambiar el archivo que ya está
 
 dependency_igraph_filtred <- foreach(i = unique_households,
-                            #  .verbose =TRUE,
-                            .packages = c(
-                              "tidyverse",
-                              "igraph",
-                              "haven",
-                              "tibble",
-                              "reshape2",
-                              "tryCatchLog",
-                              "futile.logger",
-                              "dplyr",
-                              "tidyr",
-                              "doParallel",
-                              "iterators",
-                              "parallel",
-                              "progress")                
+                                     #  .verbose =TRUE,
+                                     .packages = c(
+                                       "tidyverse",
+                                       "igraph",
+                                       "haven",
+                                       "tibble",
+                                       "reshape2",
+                                       "tryCatchLog",
+                                       "futile.logger",
+                                       "dplyr",
+                                       "tidyr",
+                                       "doParallel",
+                                       "iterators",
+                                       "parallel",
+                                       "progress")                
 ) %dopar% {
   tryCatch(
-    household_process(i, data),
+    household_process(i, data_sample),
     error = function(e) {
       message(paste("Error en el hogar", i, ":", e$message))
       return(list(household_id = i, dependency_net = NULL, warning = e$message))
@@ -554,13 +480,13 @@ successful_graphs <- dependency_igraph_filtred[!sapply(dependency_igraph_filtred
 failed_graphs <- dependency_igraph_filtred[sapply(dependency_igraph_filtred, function(x) is.null(x$dependency_net))]
 
 # Resultados finales
-message("Total hogares procesados: ", length(unique(data$household)))
+message("Total hogares procesados: ", length(unique(data_sample$household)))
 message("Total hogares completos: ", length(successful_graphs))
-message("Total hogares fallidos: ", length(failed_graphs)) #93 fallidos
+message("Total hogares fallidos: ", length(failed_graphs))
 
 # Guardar los resultados en un archivo
-save(dependency_igraph_filtred, file = "Ergomitos/Redes/dependency_igraph_filtred.RData")
-
+save(dependency_igraph_filtred, file = "Ergomitos/Redes/dependency_igraph_filtred_subset100.RData")
+beep(1)
 # Convertir a formato Network
 a <- dependency_igraph_filtred
 
@@ -569,8 +495,8 @@ dependency_network_filtred <- lapply(a, function(j) {
   j
 })
 
-save(dependency_network_filtred, file = "Ergomitos/Redes/dependency_network_filtred.RData")
-
+save(dependency_network_filtred, file = "Ergomitos/Redes/dependency_network_filtred_subset100.RData")
+beep(5)
 
 ############################ RED KINSHIP #######################################
 # Establecer el número de núcleos para el procesamiento en paralelo
@@ -580,8 +506,8 @@ registerDoParallel(cl)
 start.time <- Sys.time()
 
 # Función para procesar cada household
-household_process <- function(i, data) {
-  household_i <- data[which(data$household == i),]
+household_process <- function(i, data_sample) {
+  household_i <- data_sample[which(data_sample$household == i),]
   
   nodes_list <- tibble(household_id_persona = as.character(household_i$id_persona))
   
@@ -640,45 +566,45 @@ household_process <- function(i, data) {
   
   # adding attributes to igraph objects
   covariates <- covariates[order(covariates$id_persona),]
-  V(kinship_net)$sex <- as.integer(covariates$sex)
-  V(kinship_net)$edad <- as.integer(covariates$edad)
-  V(kinship_net)$e6a <- as.character(covariates$e6a)
-  V(kinship_net)$o1 <- as.character(covariates$o1)
-  V(kinship_net)$r1b_pais_esp <- as.integer(covariates$r1b_pais_esp)
-  V(kinship_net)$ecivil <- as.character(covariates$ecivil)
-  V(kinship_net)$r3 <- as.character(covariates$r3)
-  V(kinship_net)$s17 <- as.character(covariates$s17)
-  V(kinship_net)$s28 <- as.character(covariates$s28)
-  V(kinship_net)$y1 <- as.character(covariates$y1)
-  V(kinship_net)$y1_preg <- as.character(covariates$y1_preg)
-  V(kinship_net)$comuna <- as.character(covariates$comuna)
-  V(kinship_net)$region <- as.character(covariates$region)
+  V(kinship_net)$sex <- as.numeric(covariates$sex)
+  V(kinship_net)$edad <- as.numeric(covariates$edad)
+  V(kinship_net)$e6a <- as.numeric(covariates$e6a)
+  V(kinship_net)$o1 <- as.numeric(covariates$o1)
+  V(kinship_net)$r1b_pais_esp <- as.numeric(covariates$r1b_pais_esp)
+  V(kinship_net)$ecivil <- as.numeric(covariates$ecivil)
+  V(kinship_net)$r3 <- as.numeric(covariates$r3)
+  V(kinship_net)$s17 <- as.numeric(covariates$s17)
+  V(kinship_net)$s28 <- as.numeric(covariates$s28)
+  V(kinship_net)$y1 <- as.numeric(covariates$y1)
+  V(kinship_net)$y1_preg <- as.numeric(covariates$y1_preg)
+  V(kinship_net)$comuna <- as.numeric(covariates$comuna)
+  V(kinship_net)$region <- as.numeric(covariates$region)
   
   
   grafo <- list(household_i = i, kinship_net = kinship_net)
   return(grafo)
 }
-unique_households <- unique(data$household)
+unique_households <- unique(data_sample$household)
 
 kinship_igrpah_filtred <- foreach(i = unique_households,
-                                 #  .verbose =TRUE,
-                                 .packages = c(
-                                   "tidyverse",
-                                   "igraph",
-                                   "haven",
-                                   "tibble",
-                                   "reshape2",
-                                   "tryCatchLog",
-                                   "futile.logger",
-                                   "dplyr",
-                                   "tidyr",
-                                   "doParallel",
-                                   "iterators",
-                                   "parallel",
-                                   "progress")                
+                                  #  .verbose =TRUE,
+                                  .packages = c(
+                                    "tidyverse",
+                                    "igraph",
+                                    "haven",
+                                    "tibble",
+                                    "reshape2",
+                                    "tryCatchLog",
+                                    "futile.logger",
+                                    "dplyr",
+                                    "tidyr",
+                                    "doParallel",
+                                    "iterators",
+                                    "parallel",
+                                    "progress")                
 ) %dopar% {
   tryCatch(
-    household_process(i, data),
+    household_process(i, data_sample),
     error = function(e) {
       message(paste("Error en el hogar", i, ":", e$message))
       return(list(household_id = i, kinship_net = NULL, warning = e$message))
@@ -697,16 +623,16 @@ successful_graphs <- kinship_igrpah_filtred[!sapply(kinship_igrpah_filtred, func
 failed_graphs <- kinship_igrpah_filtred[sapply(kinship_igrpah_filtred, function(x) is.null(x$kinship_net))]
 
 # Resultados finales
-message("Total hogares procesados: ", length(unique(data$household)))
+message("Total hogares procesados: ", length(unique(data_sample$household)))
 message("Total hogares completos: ", length(successful_graphs))
 message("Total hogares fallidos: ", length(failed_graphs))
 
-save(kinship_igrpah_filtred, file = paste0(getwd(), "/Ergomitos/Redes/kinship_igrpah_filtred.RData"))
-
+save(kinship_igrpah_filtred, file = paste0(getwd(), "/Ergomitos/Redes/kinship_igrpah_filtred_subset100.Rdata"))
+beep(1)
 a <- kinship_igrpah_filtred
 kinship_network_filtred<- lapply(a, function(j) {
   j$kinship_net <- asNetwork(j$kinship_net)
   j
 })
-save(kinship_network_filtred, file = paste0(getwd(), "/Ergomitos/Redes/kinship_network_filtred.RData"))
-
+save(kinship_network_filtred, file = paste0(getwd(), "/Ergomitos/Redes/kinship_network_filtred_subset100.RData"))
+beep(5)
