@@ -394,7 +394,6 @@ save(dependency_igraph_sample, file = paste0("Redes/dependency_igrpah_subset1000
 
 a <- dependency_igrpah_sample
 
-
 dependency_network_sample <- lapply(a, function(j) {
   j$dependency_net <- asNetwork(j$dependency_net)
   j
