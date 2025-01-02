@@ -385,9 +385,6 @@ dependency_network <- lapply(successful_graphs, function(j) {
 })
 
 save(dependency_network, file = "Redes/dependency_network.RData")
->>>>>>> 1af1dc33f8c4da153546d833641eab2a3ea0c043
-
-
 
 
 ########################## RED DE DEPENDENCIA ##################################

@@ -218,8 +218,8 @@ stopCluster(cl) # Detener el clúster
 time.taken_parallel <- end.time - start.time
 time.taken_parallel
 
-successful_graphs <- descent_igrpah[!sapply(descent_igrpah, is.null)]
-failed_graphs <- descent_igrpah[sapply(descent_igrpah, is.null)]
+successful_graphs <- descent_igrpah_filtred[!sapply(descent_igrpah_filtred, is.null)]
+failed_graphs <- descent_igrpah_filtred[sapply(descent_igrpah_filtred, is.null)]
 unprocessed_households <- setdiff(unique(data$household), names(successful_graphs))
 
 # Resultados finales
@@ -229,16 +229,17 @@ message("Total hogares fallidos: ", length(failed_graphs))
 
 # Guardar los resultados en un archivo
 save(descent_igrpah_filtred, file = paste0("Ergomitos/Redes/descent_igrpah_filtrados.RData"))
-
+beep(1)
 #Creamos una lista en formato Network
 a <- descent_igrpah_filtred
 
-descent_network <- lapply(a, function(j) {
+descent_network_filtred <- lapply(a, function(j) {
   j$descent_net <- asNetwork(j$descent_net)
   j
 })
 
 save(descent_network_filtred, file = paste0("Ergomitos/Redes/descent_network_filtrados.RData"))
+beep(8)
 
 ########################## RED DE MATRIMONIO ###################################
 # Establecer el número de núcleos para el procesamiento en paralelo
@@ -373,8 +374,6 @@ marriage_network_filtred <- lapply(a, function(j) {
 })
 
 save(marriage_network_filtred, file = paste0("Ergomitos/Redes/marriage_network_filtred.RData"))
-
-
 
 # Establecer el número de núcleos para el procesamiento en paralelo
 num_cores <- detectCores() - 1
@@ -701,12 +700,12 @@ message("Total hogares procesados: ", length(unique(data$household)))
 message("Total hogares completos: ", length(successful_graphs))
 message("Total hogares fallidos: ", length(failed_graphs))
 
-save(kinship_igrpah_filtred, file = paste0(getwd(), "Ergomitos/Redes/kinship_igrpah_filtred.RData"))
+save(kinship_igrpah_filtred, file = paste0(getwd(), "/Ergomitos/Redes/kinship_igrpah_filtred.RData"))
 
 a <- kinship_igrpah_filtred
 kinship_network_filtred<- lapply(a, function(j) {
   j$kinship_net <- asNetwork(j$kinship_net)
   j
 })
-save(kinship_network_filtred, file = paste0(getwd(), "Ergomitos/Redes/kinship_network_filtred.RData"))
+save(kinship_network_filtred, file = paste0(getwd(), "/Ergomitos/Redes/kinship_network_filtred.RData"))
 
