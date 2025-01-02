@@ -305,19 +305,19 @@ household_process <- function(i, data) {
   
   # Asignar atributos a los nodos
   covariates <- covariates[order(covariates$id_persona), ]
-  V(marriage_net)$sex <- as.integer(covariates$sex)
-  V(marriage_net)$edad <- as.integer(covariates$edad)
-  V(marriage_net)$e6a <- as.character(covariates$e6a)
-  V(marriage_net)$o1 <- as.character(covariates$o1)
-  V(marriage_net)$r1b_pais_esp <- as.integer(covariates$r1b_pais_esp)
-  V(marriage_net)$ecivil <- as.character(covariates$ecivil)
-  V(marriage_net)$r3 <- as.character(covariates$r3)
-  V(marriage_net)$s17 <- as.character(covariates$s17)
-  V(marriage_net)$s28 <- as.character(covariates$s28)
-  V(marriage_net)$y1 <- as.character(covariates$y1)
-  V(marriage_net)$y1_preg <- as.character(covariates$y1_preg)
-  V(marriage_net)$comuna <- as.character(covariates$comuna)
-  V(marriage_net)$region <- as.character(covariates$region)
+  V(marriage_net)$sex <- as.numeric(covariates$sex)
+  V(marriage_net)$edad <- as.numeric(covariates$edad)
+  V(marriage_net)$e6a <- as.numeric(covariates$e6a)
+  V(marriage_net)$o1 <- as.numeric(covariates$o1)
+  V(marriage_net)$r1b_pais_esp <- as.numeric(covariates$r1b_pais_esp)
+  V(marriage_net)$ecivil <- as.numeric(covariates$ecivil)
+  V(marriage_net)$r3 <- as.numeric(covariates$r3)
+  V(marriage_net)$s17 <- as.numeric(covariates$s17)
+  V(marriage_net)$s28 <- as.numeric(covariates$s28)
+  V(marriage_net)$y1 <- as.numeric(covariates$y1)
+  V(marriage_net)$y1_preg <- as.numeric(covariates$y1_preg)
+  V(marriage_net)$comuna <- as.numeric(covariates$comuna)
+  V(marriage_net)$region <- as.numeric(covariates$region)
   
   return(list(household_id = i, marriage_net = marriage_net, warning = NULL))
 }
@@ -363,7 +363,7 @@ message("Total hogares fallidos: ", length(failed_graphs))
 
 # Guardar los resultados en un archivo
 save(successful_graphs, file = "Ergomitos/Redes/marriage_igraph_filtred.RData")
-
+beep(1)
 #Creamos una lista en formato Network
 
 a <- marriage_igraph_filtred
@@ -375,6 +375,7 @@ marriage_network_filtred <- lapply(a, function(j) {
 })
 
 save(marriage_network_filtred, file = paste0("Ergomitos/Redes/marriage_network_filtred.RData"))
+beep(8)
 
 # Establecer el número de núcleos para el procesamiento en paralelo
 num_cores <- detectCores() - 1
@@ -410,19 +411,19 @@ household_process <- function(i, data) {
   
   # Asignar atributos a los nodos
   covariates <- covariates[order(covariates$id_persona), ]
-  V(dependency_net)$sex <- as.integer(covariates$sex)
-  V(dependency_net)$edad <- as.integer(covariates$edad)
-  V(dependency_net)$e6a <- as.character(covariates$e6a)
-  V(dependency_net)$o1 <- as.character(covariates$o1)
-  V(dependency_net)$r1b_pais_esp <- as.integer(covariates$r1b_pais_esp)
-  V(dependency_net)$ecivil <- as.character(covariates$ecivil)
-  V(dependency_net)$r3 <- as.character(covariates$r3)
-  V(dependency_net)$s17 <- as.character(covariates$s17)
-  V(dependency_net)$s28 <- as.character(covariates$s28)
-  V(dependency_net)$y1 <- as.character(covariates$y1)
-  V(dependency_net)$y1_preg <- as.character(covariates$y1_preg)
-  V(dependency_net)$comuna <- as.character(covariates$comuna)
-  V(dependency_net)$region <- as.character(covariates$region)
+  V(dependency_net)$sex <- as.numeric(covariates$sex)
+  V(dependency_net)$edad <- as.numeric(covariates$edad)
+  V(dependency_net)$e6a <- as.numeric(covariates$e6a)
+  V(dependency_net)$o1 <- as.numeric(covariates$o1)
+  V(dependency_net)$r1b_pais_esp <- as.numeric(covariates$r1b_pais_esp)
+  V(dependency_net)$ecivil <- as.numeric(covariates$ecivil)
+  V(dependency_net)$r3 <- as.numeric(covariates$r3)
+  V(dependency_net)$s17 <- as.numeric(covariates$s17)
+  V(dependency_net)$s28 <- as.numeric(covariates$s28)
+  V(dependency_net)$y1 <- as.numeric(covariates$y1)
+  V(dependency_net)$y1_preg <- as.numeric(covariates$y1_preg)
+  V(dependency_net)$comuna <- as.numeric(covariates$comuna)
+  V(dependency_net)$region <- as.numeric(covariates$region)
   
   return(list(household_id = i, dependency_net = dependency_net, warning = NULL))
 }
@@ -454,10 +455,7 @@ dependency_igraph_filtred <- foreach(i = unique_households,
     }
   )
 }
-
-
-
-
+beep(5)
 
 ########################## RED DE DEPENDENCIA ##################################
 num_cores <- detectCores()-1
@@ -494,19 +492,19 @@ household_process <- function(i, data) {
   dependency_net <- graph_from_data_frame(d = edge_dependency, vertices = nodes, directed = TRUE)
   
   covariates <- covariates[order(covariates$id_persona),]
-  V(dependency_net)$sex <- as.integer(covariates$sex)
-  V(dependency_net)$edad <- as.integer(covariates$edad)
-  V(dependency_net)$e6a <- as.character(covariates$e6a)
-  V(dependency_net)$o1 <- as.character(covariates$o1)
-  V(dependency_net)$r1b_pais_esp <- as.integer(covariates$r1b_pais_esp)
-  V(dependency_net)$ecivil <- as.character(covariates$ecivil)
-  V(dependency_net)$r3 <- as.character(covariates$r3)
-  V(dependency_net)$s17 <- as.character(covariates$s17)
-  V(dependency_net)$s28 <- as.character(covariates$s28)
-  V(dependency_net)$y1 <- as.character(covariates$y1)
-  V(dependency_net)$y1_preg <- as.character(covariates$y1_preg)
-  V(dependency_net)$comuna <- as.character(covariates$comuna)
-  V(dependency_net)$region <- as.character(covariates$region)
+  V(dependency_net)$sex <- as.numeric(covariates$sex)
+  V(dependency_net)$edad <- as.numeric(covariates$edad)
+  V(dependency_net)$e6a <- as.numeric(covariates$e6a)
+  V(dependency_net)$o1 <- as.numeric(covariates$o1)
+  V(dependency_net)$r1b_pais_esp <- as.numeric(covariates$r1b_pais_esp)
+  V(dependency_net)$ecivil <- as.numeric(covariates$ecivil)
+  V(dependency_net)$r3 <- as.numeric(covariates$r3)
+  V(dependency_net)$s17 <- as.numeric(covariates$s17)
+  V(dependency_net)$s28 <- as.numeric(covariates$s28)
+  V(dependency_net)$y1 <- as.numeric(covariates$y1)
+  V(dependency_net)$y1_preg <- as.numeric(covariates$y1_preg)
+  V(dependency_net)$comuna <- as.numeric(covariates$comuna)
+  V(dependency_net)$region <- as.numeric(covariates$region)
   
   
   grafo <- list(household_i = i, dependency_net = dependency_net)
@@ -560,7 +558,7 @@ message("Total hogares fallidos: ", length(failed_graphs)) #93 fallidos
 
 # Guardar los resultados en un archivo
 save(dependency_igraph_filtred, file = "Ergomitos/Redes/dependency_igraph_filtred.RData")
-
+beep(1)
 # Convertir a formato Network
 a <- dependency_igraph_filtred
 
@@ -570,7 +568,7 @@ dependency_network_filtred <- lapply(a, function(j) {
 })
 
 save(dependency_network_filtred, file = "Ergomitos/Redes/dependency_network_filtred.RData")
-
+beep(5)
 
 ############################ RED KINSHIP #######################################
 # Establecer el número de núcleos para el procesamiento en paralelo
@@ -640,19 +638,19 @@ household_process <- function(i, data) {
   
   # adding attributes to igraph objects
   covariates <- covariates[order(covariates$id_persona),]
-  V(kinship_net)$sex <- as.integer(covariates$sex)
-  V(kinship_net)$edad <- as.integer(covariates$edad)
-  V(kinship_net)$e6a <- as.character(covariates$e6a)
-  V(kinship_net)$o1 <- as.character(covariates$o1)
-  V(kinship_net)$r1b_pais_esp <- as.integer(covariates$r1b_pais_esp)
-  V(kinship_net)$ecivil <- as.character(covariates$ecivil)
-  V(kinship_net)$r3 <- as.character(covariates$r3)
-  V(kinship_net)$s17 <- as.character(covariates$s17)
-  V(kinship_net)$s28 <- as.character(covariates$s28)
-  V(kinship_net)$y1 <- as.character(covariates$y1)
-  V(kinship_net)$y1_preg <- as.character(covariates$y1_preg)
-  V(kinship_net)$comuna <- as.character(covariates$comuna)
-  V(kinship_net)$region <- as.character(covariates$region)
+  V(kinship_net)$sex <- as.numeric(covariates$sex)
+  V(kinship_net)$edad <- as.numeric(covariates$edad)
+  V(kinship_net)$e6a <- as.numeric(covariates$e6a)
+  V(kinship_net)$o1 <- as.numeric(covariates$o1)
+  V(kinship_net)$r1b_pais_esp <- as.numeric(covariates$r1b_pais_esp)
+  V(kinship_net)$ecivil <- as.numeric(covariates$ecivil)
+  V(kinship_net)$r3 <- as.numeric(covariates$r3)
+  V(kinship_net)$s17 <- as.numeric(covariates$s17)
+  V(kinship_net)$s28 <- as.numeric(covariates$s28)
+  V(kinship_net)$y1 <- as.numeric(covariates$y1)
+  V(kinship_net)$y1_preg <- as.numeric(covariates$y1_preg)
+  V(kinship_net)$comuna <- as.numeric(covariates$comuna)
+  V(kinship_net)$region <- as.numeric(covariates$region)
   
   
   grafo <- list(household_i = i, kinship_net = kinship_net)
@@ -702,11 +700,11 @@ message("Total hogares completos: ", length(successful_graphs))
 message("Total hogares fallidos: ", length(failed_graphs))
 
 save(kinship_igrpah_filtred, file = paste0(getwd(), "/Ergomitos/Redes/kinship_igrpah_filtred.RData"))
-
+beep(1)
 a <- kinship_igrpah_filtred
 kinship_network_filtred<- lapply(a, function(j) {
   j$kinship_net <- asNetwork(j$kinship_net)
   j
 })
 save(kinship_network_filtred, file = paste0(getwd(), "/Ergomitos/Redes/kinship_network_filtred.RData"))
-
+beep(8)
