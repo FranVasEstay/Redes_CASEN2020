@@ -28,6 +28,15 @@ library(network)
 ##################### ADMINISTRACIÓN DE LOS DATOS ##############################
 load("Data/ori_Casen2020_rdata.RData")
 
+###Integración de nuevas variables
+#e6a nivel educativo
+#o1 trabajó la semana pasada
+#r1b_pais_esp nacionalidad
+#r3 pueblo indígena
+#s17 tuvo consulta médica
+#s28 ha estado en tratamiento médico (12 meses)
+#y1 Monto sueldo líquido
+#y1_preg Recibió sueldo
 data<- ori_Casen2020_STATA %>%
   select(id_vivienda, id_persona, edad, sexo,e6a,o1,r1b_pais_esp, pco1, h5, ecivil, h5_1, h5_2, r1b_pais_esp,nucleo, pco2, r3,s17,s28,y1,y1_preg, comuna, region) %>%
   filter(!id_vivienda %in% c(8102104907, 6106100505, 9115300202)) %>%
@@ -51,6 +60,7 @@ data_subset <- data %>%
   filter(household %in% id_vivienda_sample)
 # Verificar el número de filas en el subset
 nrow(data_subset)
+length(unique(data_subset$household))
 
 #### Creacion de directorio ####
 if (!dir.exists("Redes")) {
@@ -219,7 +229,7 @@ household_process <- function(i, data_subset) {
   # Validar que los atributos coincidan con los nodos
   if (length(V(marriage_net)) != nrow(covariates)) {
     warning(paste("Número de vértices no coincide con las covariables en el hogar", i))
-    return(list(household_id = i, marriage_net = NULL, warning = "Vertices no coinciden con covariables"))
+    return(list(household_id = i, warning = "Vertices no coinciden con covariables"))
   }
   
   # Asignar atributos a los nodos
@@ -238,7 +248,9 @@ household_process <- function(i, data_subset) {
   V(marriage_net)$comuna <- as.character(covariates$comuna)
   V(marriage_net)$region <- as.character(covariates$region)
   
-  return(list(household_id = i, marriage_net = marriage_net, warning = NULL))
+  grafo <- list(i = i, marriage_net = marriage_net)
+
+return(grafo)
 }
 
 # Usar foreach para ejecutar en paralelo
@@ -304,18 +316,21 @@ registerDoParallel(cl)
 start.time <- Sys.time()
 
 household_process <- function(i, data_subset) {
+  #filtrar datos del hogar
   household_i <- data_subset[which(data_subset$household == i), ]
+  #Validar si hay datos
+  if (nrow(household_i) == 0) {
+    warning(paste("Hogar", i, "no tiene datos"))
+    return(list(household_id = i, dependency_net = NULL, warning = "No tiene datos"))
+  }
   
   # Crear nodos y aristas
   nodes_list <- tibble(household_id_persona = as.character(household_i$id_persona))
   
-  edge_dependency <- tibble(
-    from = as.character(household_i$h5_2),
-    to = as.character(household_i$id_persona)
-  ) %>%
-    filter(from != "0" & from != "") %>%
-    mutate(to = as.character(to))
-  
+  edge_dependency <- tibble(from = household_i$h5_2, to = household_i$id_persona)
+  edge_dependency <- edge_dependency[which(edge_dependency$from != 0),]
+  edge_dependency$to <- as.character(edge_dependency$to)
+  edge_dependency$from <- as.character(edge_dependency$from)
   edge_dependency$type <- "econ_support"
   edge_dependency$color <- 2
   
@@ -323,6 +338,8 @@ household_process <- function(i, data_subset) {
   myvars <- c("id_persona", "sex", "edad", "ecivil", "e6a", "o1", "r1b_pais_esp", "r3", "s17", "s28", "y1", "y1_preg", "region", "comuna")
   covariates <- household_i[myvars]
   nodes <- sort(covariates$id_persona)
+  edge_dependency <- edge_dependency[edge_dependency$from %in% nodes_list$household_id_persona & 
+                                       edge_dependency$to %in% nodes_list$household_id_persona, ]
   
   # Crear el grafo
   dependency_net <- graph_from_data_frame(d = edge_dependency, vertices = nodes, directed = TRUE)
@@ -343,8 +360,9 @@ household_process <- function(i, data_subset) {
   V(dependency_net)$comuna <- as.character(covariates$comuna)
   V(dependency_net)$region <- as.character(covariates$region)
   
-  return(list(household_id = i, dependency_net = dependency_net, warning = NULL))
-}
+  grafo <- list(i = i, dependency_net = dependency_net)
+  return(grafo) 
+  }
 
 unique_households <- unique(data_subset$household)
 
@@ -365,13 +383,7 @@ dependency_igraph_sample <- foreach(i = unique_households,
                                "parallel",
                                "progress")
 ) %dopar% {
-  tryCatch(
-    household_process(i, data_subset),
-    error = function(e) {
-      message(paste("Error en el hogar", i, ":", e$message))
-      return(list(household_id = i, dependency_net = NULL, warning = e$message))
-    }
-  )
+    household_process(i, data_subset)
 }
 
 end.time <- Sys.time()
@@ -388,11 +400,12 @@ message("Total hogares completos: ", length(successful_graphs))
 message("Total hogares fallidos: ", length(failed_graphs)) #2
 
 # Guardar los resultados en un archivo. Acá cambié el nombre para evitar cambiar el archivo que ya está
-save(dependency_igraph_sample, file = paste0("Redes/dependency_igrpah_subset1000.RData"))
+save(dependency_igraph_sample, file = paste0("Redes/dependency_igraph_subset1000.RData"))
 
 #Y ahora creamos una lista igual, pero en formato Network
 
-a <- dependency_igrpah_sample
+a <- dependency_igraph_sample
+str(dependency_igraph_sample)
 
 dependency_network_sample <- lapply(a, function(j) {
   j$dependency_net <- asNetwork(j$dependency_net)

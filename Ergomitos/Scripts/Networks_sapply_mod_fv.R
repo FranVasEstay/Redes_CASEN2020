@@ -296,15 +296,14 @@ household_process <- function(i, data) {
   # Crear nodos y aristas
   nodes_list <- tibble(household_id_persona = as.character(household_i$id_persona))
   
-  edge_dependency <- tibble(
-    from = as.character(household_i$h5_2),
-    to = as.character(household_i$id_persona)
-  ) %>%
-    filter(from != "0" & from != "") %>%
-    mutate(to = as.character(to))
-  
+  edge_dependency <- tibble(from = household_i$h5_2, to = household_i$id_persona)
+  edge_dependency <- edge_dependency[which(edge_dependency$from != 0),]
+  edge_dependency$to <- as.character(edge_dependency$to)
+  edge_dependency$from <- as.character(edge_dependency$from)
   edge_dependency$type <- "econ_support"
   edge_dependency$color <- 2
+  edge_dependency <- edge_dependency[edge_dependency$from %in% nodes_list$household_id_persona & 
+                                       edge_dependency$to %in% nodes_list$household_id_persona, ]
   
   # Variables para los nodos
   myvars <- c("id_persona", "sex", "edad", "ecivil", "e6a", "o1", "r1b_pais_esp", "r3", "s17", "s28", "y1", "y1_preg", "region", "comuna")
@@ -361,6 +360,32 @@ dependency_igraph <- foreach(i = unique_households,
   )
 }
 
+<<<<<<< HEAD
+=======
+end.time <- Sys.time()
+time.taken_parallel <- end.time - start.time
+stopCluster(cl)
+
+# Filtrar resultados
+successful_graphs <- dependency_igraph[!sapply(dependency_igraph, function(x) is.null(x$dependency_net))]
+failed_graphs <- dependency_igraph[sapply(dependency_igraph, function(x) is.null(x$dependency_net))]
+
+# Resultados finales
+message("Total hogares procesados: ", length(unique(data$household)))
+message("Total hogares completos: ", length(successful_graphs))
+message("Total hogares fallidos: ", length(failed_graphs))
+
+# Guardar los resultados en un archivo
+save(successful_graphs, file = "Redes/dependency_igraph.RData")
+
+# Convertir a formato Network
+dependency_network <- lapply(successful_graphs, function(j) {
+  j$dependency_net <- asNetwork(j$dependency_net)
+  j
+})
+
+save(dependency_network, file = "Redes/dependency_network.RData")
+>>>>>>> 1af1dc33f8c4da153546d833641eab2a3ea0c043
 
 
 

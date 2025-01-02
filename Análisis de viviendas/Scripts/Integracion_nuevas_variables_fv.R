@@ -26,7 +26,7 @@ library(sjmisc)
 
 ###### CARGAR DATA ######
 
-load("Data/ori_Casen2020_rdata.RData")
+load("Análisis de viviendas/Data/ori_Casen2020_rdata.RData")
 
 ##################### ADMINISTRACIÓN DE LOS DATOS ##############################
 
@@ -50,7 +50,7 @@ data<- ori_Casen2020_STATA %>%
     r1b_pais_esp = ifelse(r1b_pais_esp == "", 1,
                           ifelse(r1b_pais_esp == "NO RESPONDE", 3, 2))
   )
-save(data, file = "Data/Data.RData")
+save(data, file = "Análisis de viviendas/Data/Data.RData")
 
  ##¿Cuantas viviendas tienen un id de persona repetido? ¿CuáleS?
 a <- paste(data$household, data$id_persona)
@@ -70,7 +70,7 @@ data_subset <- data %>%
 # Verificar el número de filas en el subset
 nrow(data_subset)
 
-save(data_subset, file = "Data/Data_subset.RData")
+save(data_subset, file = "Análisis de viviendas/Data/Data_subset.RData")
 
 ######################### CALCULO DE ESTADISTICOS ##############################
 ### Crear listas y data frame vacios para recopilar información 
@@ -112,12 +112,14 @@ for (i in unique(data$household)) {
     porc.empleo <- (n.siW / sum(!is.na(vivienda_i$o1)))* 100
     
     # Atención de salud
-    n.saludsi <- sum(vivienda_i$s17 == "Sí", na.rm = TRUE)
-    porc.salud <- (n.saludsi / sum(!is.na(vivienda_i$s17))) * 100
+    saludtab <-vivienda_i %>% count(s17, .drop =F)
+    n.saludsi <- sum(vivienda_i$n[saludtab$s17 %in% levels(data$s17)[1:1]], na.rm = TRUE)
+    total_personas_sal <- sum(saludtab$n,na.rm = T)
+    porc.salud <- ifelse(total_personas_sal == 0, 0, (n.saludsi / total_personas_sal) * 100)
     
     # Condición de salud
     enftab <- vivienda_i %>% count(s28, .drop = FALSE)
-    n.enf <- sum(enftab$n[enftab$s28 %in% levels(data$s28)[1:10]], na.rm = TRUE)
+    n.enf <- sum(enftab$n[enftab$s28 %in% levels(data$s28)[1:21]], na.rm = TRUE)
     total_personas_s <- sum(enftab$n, na.rm = TRUE)
     porc.enf <- ifelse(total_personas == 0, 0, (n.enf / total_personas_s) * 100)
     
@@ -135,7 +137,7 @@ for (i in unique(data$household)) {
     quintil_sueldo <- ntile(prom_sueldo, 5)
     
     # Crear tabla de resultados
-    table_households <- tibble(i, porc.hombre, porc.ind, porc.empleo, porc.salud, porc.chi, porc.sal, edad.prom, edad.sd, region, comuna)
+    table_households <- tibble(i, porc.hombre, porc.ind, porc.empleo, porc.salud,porc.enf, porc.chi, porc.sal,quintil_sueldo, edad.prom, edad.sd, region, comuna)
     measurements <- rbind(measurements, table_households)
     measurements <- distinct(measurements)
 
@@ -153,8 +155,8 @@ head(measurements)
 if (!dir.exists("Descriptives")) {
   dir.create("Descriptives")
 }
-save(measurements, file = "Descriptives/medidas_redes.RData")
+save(measurements, file = "Análisis de viviendas/Descriptives/medidas_redes.RData")
 
-load("Descriptives/medidas_redes.RData")
+load("Análisis de viviendas/Descriptives/medidas_redes.RData")
 
 
