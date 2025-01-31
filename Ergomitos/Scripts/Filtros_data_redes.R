@@ -28,18 +28,18 @@ library(intergraph)
 library(progress)
 
 ##### DATA ####
-data_filtrada<- ori_Casen2020_STATA %>%
-  select(id_vivienda, id_persona, edad, sexo,e6a,o1,r1b_pais_esp, pco1, h5, ecivil, h5_1, h5_2, r1b_pais_esp,nucleo, pco2, r3,s17,s28,y1,y1_preg, comuna, region) %>%
+data_filtrada<-  ori_Casen2020_STATA %>%
+  select(id_vivienda, id_persona, edad, sexo,e6a,o1,r1b_pais_esp, pco1, h5, ecivil, h5_1, h5_2, r1b_pais_esp,nucleo, pco2, r3,s28,y1,y1_preg, comuna, region) %>%
   filter(!id_vivienda %in% c(8102104907, 6106100505, 9115300202)) %>%
   rename(household = id_vivienda, sex = sexo) %>%
   mutate(
     sex = factor(sex, levels = c(1, 2), labels = c("Hombre", "Mujer")),
     household = as.numeric(household),
-    across(c(e6a,pco1, ecivil, pco2, r3, s17,o1, y1_preg), as_factor),
-    r1b_pais_esp = ifelse(r1b_pais_esp == "", 1,
-                          ifelse(r1b_pais_esp == "NO RESPONDE", 0, 2)),
+    r1b_pais_esp = case_when(r1b_pais_esp == "" ~ 1,r1b_pais_esp %in% c("NO RESPONDE", "NO BIEN ESPECIFICADO")~ 0,TRUE ~ 2),
     r3 = ifelse(as.numeric(r3) >= 1 & as.numeric(r3) <= 10, 1, # Sí (1-10)
-                ifelse(as.numeric(r3) == 11, 2, 0)) # No (11)
+                ifelse(as.numeric(r3) == 11, 2, 0)), # No (11)
+    s28 = case_when(s28 %in% 1:21 ~ "Si",s28 %in% c(22, 99) ~ "No",TRUE ~ as.character(s28)),
+    across(c(e6a,pco1, ecivil, pco2, r3,o1, y1_preg,s28,r1b_pais_esp), as_factor)
   ) %>%
   
   # Calcular el tamaño del hogar y filtrar por tamaño (3 a 5 integrantes)
