@@ -29,7 +29,7 @@ library(progress)
 
 ##### DATA ####
 data_filtrada<- ori_Casen2020_STATA %>%
-  select(id_vivienda, id_persona, edad, sexo,e6a,o1,r1b_pais_esp, pco1, h5, ecivil, h5_1, h5_2, r1b_pais_esp,nucleo, pco2, r3,s17,s28,y1,y1_preg, comuna, region) %>%
+  select(id_vivienda, id_persona, edad, sexo,e6a,o1,r1b_pais_esp, pco1, h5, ecivil, h5_1, h5_2, r1b_pais_esp,nucleo, pco2, r3,s17,s28,y1,y1_preg, comuna, region, ytotcor) %>%
   filter(!id_vivienda %in% c(8102104907, 6106100505, 9115300202)) %>%
   rename(household = id_vivienda, sex = sexo) %>%
   mutate(
@@ -98,7 +98,7 @@ household_process <- function(i, data_sample) {
   edge_descent$color <- 1
   
   # Variables de los nodos
-  myvars <- c("id_persona", "sex", "edad", "ecivil", "e6a", "o1", "r1b_pais_esp", "r3", "s17", "s28", "y1", "y1_preg", "region", "comuna")
+  myvars <- c("id_persona", "sex", "edad", "ecivil", "e6a", "o1", "r1b_pais_esp", "r3", "s17", "s28", "y1", "y1_preg", "region", "comuna","ytotcor")
   covariates <- household_i[myvars]
   nodes <- sort(covariates$id_persona)
   
@@ -120,6 +120,7 @@ household_process <- function(i, data_sample) {
     V(descent_net)$y1_preg <- as.numeric(covariates$y1_preg)
     V(descent_net)$comuna <- as.numeric(covariates$comuna)
     V(descent_net)$region <- as.numeric(covariates$region)
+    V(descent_net)$ytotcor <- as.numeric(covariates$ytotcor)
     
     grafo <- list(i = i, descent_net = descent_net)
   } else {
@@ -216,7 +217,7 @@ household_process <- function(i, data_sample) {
   
   # Variables para los nodos
   myvars <- c("id_persona", "sex", "edad", "ecivil", "e6a", "o1", "r1b_pais_esp", 
-              "r3", "s17", "s28", "y1", "y1_preg", "region", "comuna")
+              "r3", "s17", "s28", "y1", "y1_preg", "region", "comuna","ytotcor")
   covariates <- household_i[myvars]
   nodes <- sort(covariates$id_persona)
   
@@ -244,7 +245,7 @@ household_process <- function(i, data_sample) {
   V(marriage_net)$y1_preg <- as.numeric(covariates$y1_preg)
   V(marriage_net)$comuna <- as.numeric(covariates$comuna)
   V(marriage_net)$region <- as.numeric(covariates$region)
-  
+  V(marriage_net)$ytotcor <- as.numeric(covariates$ytotcor)
   return(list(household_id = i, marriage_net = marriage_net, warning = NULL))
 }
 
@@ -327,7 +328,7 @@ household_process <- function(i, data_sample) {
   edge_dependency$color <- 2
   
   # Variables para los nodos
-  myvars <- c("id_persona", "sex", "edad", "ecivil", "e6a", "o1", "r1b_pais_esp", "r3", "s17", "s28", "y1", "y1_preg", "region", "comuna")
+  myvars <- c("id_persona", "sex", "edad", "ecivil", "e6a", "o1", "r1b_pais_esp", "r3", "s17", "s28", "y1", "y1_preg", "region", "comuna","ytotcor")
   covariates <- household_i[myvars]
   nodes <- sort(covariates$id_persona)
   
@@ -349,6 +350,7 @@ household_process <- function(i, data_sample) {
   V(dependency_net)$y1_preg <- as.numeric(covariates$y1_preg)
   V(dependency_net)$comuna <- as.numeric(covariates$comuna)
   V(dependency_net)$region <- as.numeric(covariates$region)
+  V(dependency_net)$ytotcor <- as.numeric(covariates$ytotcor)
   
   return(list(household_id = i, dependency_net = dependency_net, warning = NULL))
 }
@@ -382,9 +384,6 @@ dependency_igraph_filtred <- foreach(i = unique_households,
 }
 
 
-
-
-
 ########################## RED DE DEPENDENCIA ##################################
 num_cores <- detectCores()-1
 registerDoParallel(cores = num_cores)
@@ -413,7 +412,7 @@ household_process <- function(i, data_sample) {
   edge_dependency$color <- 2
   edge_dependency<-rbind(edge_dependency)
   
-  myvars <- c("id_persona", "sex", "edad","ecivil","e6a","o1","r1b_pais_esp","r3","s17","s28","y1","y1_preg", "region", "comuna")
+  myvars <- c("id_persona", "sex", "edad","ecivil","e6a","o1","r1b_pais_esp","r3","s17","s28","y1","y1_preg", "region", "comuna","ytotcor")
   covariates <- household_i[myvars]
   nodes <- sort(covariates$id_persona)
   
@@ -433,7 +432,7 @@ household_process <- function(i, data_sample) {
   V(dependency_net)$y1_preg <- as.numeric(covariates$y1_preg)
   V(dependency_net)$comuna <- as.numeric(covariates$comuna)
   V(dependency_net)$region <- as.numeric(covariates$region)
-  
+  V(dependency_net)$ytotcor <- as.numeric(covariates$ytotcor)
   
   grafo <- list(household_i = i, dependency_net = dependency_net)
   return(grafo)
@@ -557,7 +556,7 @@ household_process <- function(i, data_sample) {
   
   
   names(household_i)
-  myvars <- c("id_persona", "sex", "edad","ecivil","e6a","o1","r1b_pais_esp","r3","s17","s28","y1","y1_preg", "region", "comuna")
+  myvars <- c("id_persona", "sex", "edad","ecivil","e6a","o1","r1b_pais_esp","r3","s17","s28","y1","y1_preg", "region", "comuna","ytotcor")
   covariates <- household_i[myvars]
   
   nodes <- sort(covariates$id_persona)
@@ -579,7 +578,7 @@ household_process <- function(i, data_sample) {
   V(kinship_net)$y1_preg <- as.numeric(covariates$y1_preg)
   V(kinship_net)$comuna <- as.numeric(covariates$comuna)
   V(kinship_net)$region <- as.numeric(covariates$region)
-  
+  V(kinship_net)$ytotcor <- as.numeric(covariates$ytotcor)
   
   grafo <- list(household_i = i, kinship_net = kinship_net)
   return(grafo)
