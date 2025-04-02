@@ -2,7 +2,7 @@
 ###################### Social Network: encuesta CASEN ##########################
 ################################################################################
 ################################################################################
-############################ CREACIÓN DE REDES #################################
+############################ ESTADÍSTICOS REDES ################################
 ################################################################################
 
 ###### LIBRERÍAS ######
@@ -95,6 +95,8 @@ save(data_subset, file = "Ergomitos/Data/Data_subset.RData")
 load("Análisis de viviendas/Data/Data_subset.RData")
 
 load("Análisis de viviendas/Data/Data.RData")
+
+
 ######################### CALCULO DE ESTADISTICOS ##############################
 ### Crear listas y data frame vacios para recopilar información 
 measurements <- data.frame()

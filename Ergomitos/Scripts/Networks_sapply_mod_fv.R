@@ -40,11 +40,16 @@ data<- ori_Casen2020_STATA %>%
     household = as.numeric(household),
     across(c(e6a,pco1, ecivil, pco2, r3, s17,o1, y1_preg), as_factor),
     r1b_pais_esp = ifelse(r1b_pais_esp == "", 1,
-                          ifelse(r1b_pais_esp == "NO RESPONDE", 3, 2))
-  )
-save(data, file = "Ergomitos/Data/Data.RData")
-data <- data %>%
+                          ifelse(r1b_pais_esp == "NO RESPONDE", 3, 2)),
+    # Nuevas variables de edad
+    edad_laboral = ifelse(edad >= 15, 1, 0),          # 15+ años
+    edad_legal = ifelse(edad >= 18, 1, 0),            # 18+ años
+    edad_dependencia_estudios = ifelse(edad >= 28, 1, 0),  # 28+ años
+  )%>%
   mutate_all(~ ifelse(is.na(.), 0, .))
+
+save(data, file = "Ergomitos/Data/Data.RData")
+
 ########################### CREACION DE REDES ##################################
 ########################## RED DE DESCENDENCIA #################################
 # Establecer el número de núcleos para el procesamiento en paralelo
@@ -135,7 +140,7 @@ message("Total hogares completos: ", length(successful_graphs))
 message("Total hogares fallidos: ", length(failed_graphs))
 
 # Guardar los resultados en un archivo
-save(descent_igrpah, file = paste0("Redes/descent_igrpah.RData"))
+save(descent_igrpah, file = paste0("Ergomitos/Redes/descent_igrpah.RData"))
 
 #Creamos una lista en formato Network
 a <- descent_igrpah
@@ -145,7 +150,7 @@ descent_network <- lapply(a, function(j) {
   j
 })
 
-save(descent_network, file = paste0("Redes/descent_network.RData"))
+save(descent_network, file = paste0("Ergomitos/Redes/descent_network.RData"))
 
 ########################## RED DE MATRIMONIO ###################################
 # Establecer el número de núcleos para el procesamiento en paralelo
@@ -267,7 +272,7 @@ message("Total hogares completos: ", length(successful_graphs))
 message("Total hogares fallidos: ", length(failed_graphs))
 
 # Guardar los resultados en un archivo
-save(successful_graphs, file = "Redes/marriage_igraph.RData")
+save(marriage_igraph, file = "Ergomitos/Redes/marriage_igraph.RData")
 
 #Creamos una lista en formato Network
 
@@ -278,7 +283,7 @@ marriage_network <- lapply(a, function(j) {
   j
 })
 
-save(marriage_network, file = paste0("Redes/marriage_network.RData"))
+save(marriage_network, file = paste0("Ergomitos/Redes/marriage_network.RData"))
 
 
 
@@ -360,8 +365,6 @@ dependency_igraph <- foreach(i = unique_households,
   )
 }
 
-<<<<<<< HEAD
-=======
 end.time <- Sys.time()
 time.taken_parallel <- end.time - start.time
 stopCluster(cl)
@@ -376,15 +379,16 @@ message("Total hogares completos: ", length(successful_graphs))
 message("Total hogares fallidos: ", length(failed_graphs))
 
 # Guardar los resultados en un archivo
-save(successful_graphs, file = "Redes/dependency_igraph.RData")
+save(dependency_igraph, file = "Redes/dependency_igraph.RData")
 
 # Convertir a formato Network
-dependency_network <- lapply(successful_graphs, function(j) {
+a <- dependency_igraph
+dependency_network <- lapply(a, function(j) {
   j$dependency_net <- asNetwork(j$dependency_net)
   j
 })
 
-save(dependency_network, file = "Redes/dependency_network.RData")
+save(dependency_network, file = "Ergomitos/Redes/dependency_network.RData")
 
 
 ########################## RED DE DEPENDENCIA ##################################
@@ -486,7 +490,7 @@ message("Total hogares completos: ", length(successful_graphs))
 message("Total hogares fallidos: ", length(failed_graphs)) #93 fallidos
 
 # Guardar los resultados en un archivo
-save(successful_graphs, file = "Redes/dependency_igraph.RData")
+save(dependency_igraph, file = "Ergomitos/Redes/dependency_igraph.RData")
 
 a <- dependency_igraph
 
@@ -495,7 +499,7 @@ dependency_network <- lapply(a, function(j) {
   j
 })
 
-save(dependency_network, file = "Redes/dependency_network.RData")
+save(dependency_network, file = "Ergomitos/Redes/dependency_network.RData")
 
 
 ############################ RED KINSHIP #######################################

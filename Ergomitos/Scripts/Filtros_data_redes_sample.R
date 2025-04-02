@@ -28,6 +28,8 @@ library(intergraph)
 library(progress)
 
 ##### DATA ####
+load("Data/ori_Casen2020_rdata.RData")
+
 data_filtrada<- ori_Casen2020_STATA %>%
   select(id_vivienda, id_persona, edad, sexo,e6a,o1,r1b_pais_esp, pco1, h5, ecivil, h5_1, h5_2, r1b_pais_esp,nucleo, pco2, r3,s17,s28,y1,y1_preg, comuna, region, ytotcor) %>%
   filter(!id_vivienda %in% c(8102104907, 6106100505, 9115300202)) %>%
@@ -42,13 +44,13 @@ data_filtrada<- ori_Casen2020_STATA %>%
                 ifelse(as.numeric(r3) == 11, 2, 0)) # No (11)
   ) %>%
   
-  # Calcular el tamaño del hogar y filtrar por tamaño (3 a 5 integrantes)
+  # Calcular el tamaño del hogar y filtrar por tamaño (mayor a 1 integrante)
   group_by(household) %>%
   mutate(household_size = n()) %>% # Número de personas en cada hogar
   ungroup() %>%
-  filter(household_size >= 3 & household_size <= 5)
+  filter(household_size >= 1)
 
-length(unique(data_filtrada$household)) #son 31843 viviendas
+length(unique(data_filtrada$household)) #son 62537 viviendas
 
 #Cambiar NAs por 0
 data_filtrada <- data_filtrada %>%
@@ -56,7 +58,7 @@ data_filtrada <- data_filtrada %>%
 
 ##Subset 100 viviendas
 set.seed(400)  # Fijar semilla para reproducibilidad
-id_vivienda_sample <- sample(unique(data$household), size =100,replace = F)
+id_vivienda_sample <- sample(unique(data_filtrada$household), size =100,replace = F)
 # Crear subset con los 1000 id_vivienda seleccionados
 data_sample <- data_filtrada %>%
   filter(household %in% id_vivienda_sample)
