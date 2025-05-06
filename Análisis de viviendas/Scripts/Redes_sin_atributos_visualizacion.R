@@ -20,7 +20,7 @@ net_files <- c(
 lapply(net_files, load, .GlobalEnv)
 
 ## Filtrar y procesar redes con más de un nodo
-process_large_network_list <- function(raw_list, net_name, min_nodes = 2) {
+process_large_network_list <- function(raw_list, net_name, min_nodes = 3) {
   # Paso 1: Filtrar
   filtered <- lapply(raw_list, function(x) {
     if (inherits(x$kinship_net, "igraph") && vcount(x$kinship_net) >= min_nodes) {

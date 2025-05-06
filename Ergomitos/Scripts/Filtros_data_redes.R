@@ -98,8 +98,8 @@ cat("Variables sin NAs (sin valores distintos a 0):\n")
 print(variables_sin_nas) #edad,sexo, nivel educativo,nacionalidad,pueblo indígena,ha estado en tratamiento en los 12 ultimos meses.
 
 #Cambiar NAs por 0
-data_filtrada <- data_filtrada %>%
-  mutate_all(~ ifelse(is.na(.), 0, .))
+#data_filtrada <- data_filtrada %>%
+#  mutate_all(~ ifelse(is.na(.), 0, .))
 
 #Cuales hogares presentan variación
 variacion_respuestas <- data %>%
@@ -149,9 +149,6 @@ save(data_filtrada, file = "Ergomitos/Data/Data_filtrada.RData")
 
 ########################### CREACION DE REDES ##################################
 load("Ergomitos/Data/Data_filtrada.RData")
-#Cambiar NAs por 0
-data <- data_filtrada %>%
-  mutate_all(~ ifelse(is.na(.), 0, .))
 
 ########################## RED DE DESCENDENCIA #################################
 # Establecer el número de núcleos para el procesamiento en paralelo

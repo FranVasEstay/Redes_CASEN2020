@@ -35,8 +35,6 @@ load("Data/ori_Casen2020_rdata.RData")
 #r3 pueblo indígena
 #s17 tuvo consulta médica
 #s28 ha estado en tratamiento médico (12 meses)
-#y1 Monto sueldo líquido
-#y1_preg Recibió sueldo
 data<- ori_Casen2020_STATA %>%
   select(id_vivienda, id_persona, edad, sexo,e6a,o1,r1b_pais_esp, pco1, h5, ecivil, h5_1, h5_2, r1b_pais_esp,nucleo, pco2, r3,s17,s28,y1,y1_preg, comuna, region) %>%
   filter(!id_vivienda %in% c(8102104907, 6106100505, 9115300202)) %>%
@@ -48,9 +46,9 @@ data<- ori_Casen2020_STATA %>%
     r1b_pais_esp = ifelse(r1b_pais_esp == "", 1,
                           ifelse(r1b_pais_esp == "NO RESPONDE", 3, 2))
   )
-save(data, file = "Data/Data.RData")
-data <- data %>%
-  mutate_all(~ ifelse(is.na(.), "No_aplica", .))
+save(data, file = "Ergomitos/Data/Data.RData")
+#data <- data %>%
+# mutate_all(~ ifelse(is.na(.), "No_aplica", .))
 
 ###Utiliza set de la data ###
 set.seed(400)  # Fijar semilla para reproducibilidad
@@ -63,7 +61,7 @@ nrow(data_subset)
 length(unique(data_subset$household))
 
 #### Creacion de directorio ####
-if (!dir.exists("Redes")) {
+if (!dir.exists("Ergomitos/Redes")) {
   dir.create("Redes")
 }
 

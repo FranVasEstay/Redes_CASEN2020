@@ -53,8 +53,8 @@ data_filtrada<- ori_Casen2020_STATA %>%
 length(unique(data_filtrada$household)) #son 62537 viviendas
 
 #Cambiar NAs por 0
-data_filtrada <- data_filtrada %>%
-  mutate_all(~ ifelse(is.na(.), 0, .))
+#data_filtrada <- data_filtrada %>%
+#  mutate_all(~ ifelse(is.na(.), 0, .))
 
 ##Subset 100 viviendas
 set.seed(400)  # Fijar semilla para reproducibilidad
