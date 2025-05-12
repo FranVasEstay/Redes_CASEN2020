@@ -80,7 +80,7 @@ dependency_igraph_no_attrs <- lapply(dependency_igraph, function(network) {
 save(dependency_igraph_no_attrs, file = "Análisis de viviendas/Redes/dependency_igraph_no_attrs.RData")
 
 ############################ RED KINSHIP #######################################
-load("Ergomitos/Redes/kinship_igraph.RData")
+load("Ergomitos/Redes/kinship_igrpah.RData")
 # Eliminar todos los atributos de los nodos
 # Aplicar la función a cada red en la lista kinship_igraph
 kinship_igraph_no_attrs <- lapply(kinship_igrpah, function(network) {
@@ -104,7 +104,7 @@ remove_all_vertex_attributes <- function(graph) {
 }
 
 # Eliminar atributos de nodos en cada red de kinship_igraph
-kinship_igraph_no_attrs <- lapply(kinship_igraph, function(network) {
+kinship_igraph_no_attrs <- lapply(kinship_igrpah, function(network) {
   if (!is.null(network$kinship_net) && inherits(network$kinship_net, "igraph")) {
     network$kinship_net <- remove_all_vertex_attributes(network$kinship_net)
   }

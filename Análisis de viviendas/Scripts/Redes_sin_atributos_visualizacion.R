@@ -216,3 +216,102 @@ message("Resultados guardados en: ", normalizePath(output_dir))
 message("- Tabla de frecuencias: resumen_estructuras.csv")
 message("- Imágenes de redes: directorio Estructuras_Unicas/")
 message("- Resumen gráfico: resumen_estructuras.pdf")
+
+##################### GENERAR UN SOLO PLOT #####################################
+library(grid)
+library(gridExtra)
+create_edge_color_legend <- function(graphs) {
+  # Extraer todos los colores únicos y sus etiquetas si existen
+  all_edges <- unlist(lapply(graphs, function(g) edge_attr(g, "color")), use.names = FALSE)
+  all_types <- unlist(lapply(graphs, function(g) edge_attr(g, "type")), use.names = FALSE)
+  
+  if (is.null(all_edges)) return(NULL)
+  
+  df <- unique(data.frame(color = all_edges, label = all_types, stringsAsFactors = FALSE))
+  df <- df[!is.na(df$color), ]
+  
+  if (nrow(df) == 0) return(NULL)
+  
+  # Crear una leyenda simple usando grobs
+  legend_items <- lapply(seq_len(nrow(df)), function(i) {
+    color_box <- rectGrob(width = unit(0.4, "cm"), height = unit(0.4, "cm"),
+                          gp = gpar(fill = df$color[i], col = "orange"))
+    label <- textGrob(label = df$label[i], x = unit(0, "npc"), just = "left",
+                      gp = gpar(fontsize = 9))
+    arrangeGrob(color_box, label, ncol = 2, widths = c(0.5, 2))
+  })
+  
+  legend_grob <- arrangeGrob(grobs = legend_items, ncol = 1,
+                             top = textGrob("Leyenda de colores (relaciones)", gp = gpar(fontface = "bold")))
+  return(legend_grob)
+}
+generate_consolidated_graphs <- function(size_results, output_dir) {
+  img_dir <- file.path(output_dir, "Resumen_Tipologias")
+  if (!dir.exists(img_dir)) dir.create(img_dir)
+  
+  for (size in names(size_results)) {
+    unique_graphs <- size_results[[size]]$unique_graphs
+    freq_table <- size_results[[size]]$freq_table
+    
+    plots <- lapply(seq_along(unique_graphs), function(i) {
+      g <- unique_graphs[[i]]
+      freq <- freq_table$Freq[i]
+      structure_id <- freq_table$fingerprints[i]
+      
+      # Crear una imagen base
+      plot_file <- tempfile(fileext = ".png")
+      png(plot_file, width = 400, height = 400)
+      par(mar = rep(0.5, 4))
+      plot(g,
+           vertex.size = 15,
+           vertex.color = "lightblue",
+           vertex.label.cex = 0.8,
+           edge.width = 1.5,
+           edge.arrow.size = 0.6,
+           main = "")
+      dev.off()
+      
+      # Leer la imagen como raster
+      img <- png::readPNG(plot_file)
+      rasterGrob(img, interpolate = TRUE)
+    })
+    
+    labels <- lapply(seq_along(unique_graphs), function(i) {
+      freq <- freq_table$Freq[i]
+      structure_id <- freq_table$fingerprints[i]
+      textGrob(
+        label = paste0("Freq: ", freq),
+        gp = gpar(fontsize = 10)
+      )
+    })
+    
+    # Combinar imagen y texto
+    combined <- mapply(function(p, l) arrangeGrob(p, l, ncol = 1, heights = c(4, 1)),
+                       plots, labels, SIMPLIFY = FALSE)
+    
+    # Organizar en grilla
+    ncol <- ceiling(sqrt(length(combined)))
+    grid_plot <- arrangeGrob(grobs = combined, ncol = ncol,
+                             top = textGrob(paste("Tamaño de hogar:", size, "nodos"), gp = gpar(fontface = "bold")))
+    # Generar leyenda de colores de flechas
+    legend_grob <- create_edge_color_legend(unique_graphs)
+    
+    if (!is.null(legend_grob)) {
+      # Agregar leyenda al final
+      final_plot <- arrangeGrob(grid_plot, legend_grob, nrow = 2, heights = c(4, 1))
+    } else {
+      final_plot <- grid_plot
+    }
+    
+    ggsave(
+      filename = file.path(img_dir, paste0("Resumen_Tamano_", size, ".pdf")),
+      plot = final_plot,
+      width = 8.5, height = 11
+    )
+  }
+  
+  message("Gráficos consolidados generados en: ", img_dir)
+}
+
+
+generate_consolidated_graphs(size_results, output_dir)
