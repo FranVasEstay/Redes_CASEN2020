@@ -24,21 +24,36 @@ library(doSNOW)
 library(progress)
 library(sjmisc)
 library(intergraph)
+library(beepr)
 
 ###### CARGAR DATA ######
-
 load("Ergomitos/Data/ori_Casen2020_rdata.RData")
 
 ##################### ADMINISTRACIÓN DE LOS DATOS ##############################
+### Variables en la data ###
+# edad - edad numérico
+# sexo - sexo binario levels: 1(Hombre), 2(Mujer)
+# e6a  - nivel educativo: "¿Cuál es el nivel más alto alcanzado o el nivel educacional actual?", 17 labels de 1 "Nunca asistío" hasya 17 "Posgrado"
+# o1   - ¿trabajó la semana pasada? binario: 1(si), 2(no)
+# r1b_pais_esp - nacionalidad levels: 1(chileno), 2(extranjero), 3(no responde) 
+# ecivil - estado civil levels: 1 "Casado(a)" hasta 9 "No sabe\\No responde"
+# r3   - pueblo indígena levels:1-10 distintos pueblos indígenas, 11 - no pertenece a un pueblo indígena
+# s28  - ha estado en tratamiento médico (12 meses) levels: 1(si), 2(no), 3(No sabe/No recuerda)
+# comuna - comuna 
+# region - región 
+# ytotcor - Ingreso total del hogar numérico en pesos (CLP) 
+# edad_laboral - binaria: 1 (>=15 años), 2(<= 15 años)
+# edad_legal - binaria: 1 (>=18 años), 2(<= 18 años)
+# edad_dependencia_estudios - binaria: 1 (>=28 años), 2(<= 28 años)
 
 data_ergomitos<- ori_Casen2020_STATA %>%
-  select(id_vivienda, id_persona, edad, sexo,e6a,o1,r1b_pais_esp, pco1, h5, ecivil, h5_1, h5_2, r1b_pais_esp,nucleo, pco2, r3,s28, comuna, region,ytotcor) %>%
+  select(id_vivienda, id_persona, edad, sexo,e6a,o1,r1b_pais_esp, pco1, h5, ecivil, h5_1, h5_2,nucleo, pco2, r3,s28, comuna, region,ytotcor) %>%
   filter(!id_vivienda %in% c(8102104907, 6106100505, 9115300202)) %>%
   rename(household = id_vivienda, sex = sexo) %>%
   mutate(
     sex = factor(sex, levels = c(1, 2), labels = c("Hombre", "Mujer")),
     household = as.numeric(household),
-    across(c(e6a,pco1, ecivil, pco2, r3,o1), as_factor),
+    across(c(e6a,pco1, ecivil, pco2, r3,o1, region, comuna), as_factor),
     r1b_pais_esp = ifelse(r1b_pais_esp == "", 1,
                           ifelse(r1b_pais_esp == "NO RESPONDE", 3, 2)),
     # Nuevas variables de edad
@@ -54,6 +69,8 @@ data_ergomitos<- ori_Casen2020_STATA %>%
 save(data_ergomitos, file = "Ergomitos/Data/Data_Ergomitos.RData")
 
 ########################### CREACION DE REDES ##################################
+load("Ergomitos/Data/Data_Ergomitos.RData")
+
 ########################## RED DE DESCENDENCIA #################################
 # Establecer el número de núcleos para el procesamiento en paralelo
 num_cores <- detectCores() - 1
@@ -104,8 +121,8 @@ household_process <- function(i, data_ergomitos) {
     V(descent_net)$ecivil <- as.character(covariates$ecivil)
     V(descent_net)$r3 <- as.character(covariates$r3)
     V(descent_net)$s28 <- as.integer(covariates$s28)
-    V(descent_net)$comuna <- as.character(covariates$comuna)
-    V(descent_net)$region <- as.character(covariates$region)
+    V(descent_net)$comuna <- as.integer(covariates$comuna)
+    V(descent_net)$region <- as.integer(covariates$region)
     V(descent_net)$ytotcor <- as.character(covariates$ytotcor)
     V(descent_net)$edad_laboral <- as.numeric(covariates$edad_laboral)
     V(descent_net)$edad_legal <- as.numeric(covariates$edad_legal)
@@ -144,8 +161,8 @@ message("Total hogares fallidos: ", length(failed_graphs))
 
 # Guardar los resultados en un archivo
 save(descent_igrpah, file = paste0("Ergomitos/Redes/descent_igrpah.RData"))
-
-#Creamos una lista en formato Network
+plot(descent_igrpah[300][[1]]$descent_net)
+#Creadescent_igrpah#Creamos una lista en formato Network
 a <- descent_igrpah
 
 descent_network <- lapply(a, function(j) {
@@ -162,7 +179,7 @@ cl <- parallel::makeCluster(num_cores)
 registerDoParallel(cl)
 start.time <- Sys.time()
 
-options("tryCatchLog.write.error.dump.file" = TRUE)
+#options("tryCatchLog.write.error.dump.file" = TRUE)
 
 # Función para procesar cada hogar
 household_process <- function(i, data_ergomitos) {
@@ -178,24 +195,35 @@ household_process <- function(i, data_ergomitos) {
   # Crear nodos y aristas
   nodes_list <- tibble(household_id_persona = as.character(household_i$id_persona))
   
-  aux <- household_i %>% 
+  edge_marriage <- household_i %>%
+    filter(!is.na(h5) & h5 != 0) %>%
     group_by(h5) %>%
-    summarise(to = id_persona[1], .groups = 'drop') %>%
-    right_join(household_i, by = "h5") %>%
-    filter(id_persona != to)
+    #summarise(to = id_persona[1]) %>%
+    #right_join(household_i) %>%
+    #filter(id_persona != to)
+    summarise(
+      from = rep(id_persona, each = length(id_persona)),
+      to = rep(id_persona, times = length(id_persona)),
+      .groups = "drop"
+    ) %>%
+    filter(from != to) %>%  # Eliminar autoreferencias
+    distinct() %>%  # Eliminar duplicados (A-B vs B-A)
+    ungroup() %>%
+    select(from, to) %>%
+    mutate(type = "marriage", color = 3)
   
-  aux <- rbind(
-    aux %>% select(h5, id_persona, to),
-    aux %>% select(h5, id_persona = to, to = id_persona)
-  )
+ # aux <- rbind(
+  #  aux %>% select(h5, id_persona, to),
+  #  aux %>% select(h5, id_persona = to, to = id_persona)
+  #)
   
-  aux$to[is.na(aux$h5)] <- NA
+  #aux$to[is.na(aux$h5)] <- NA
   
-  colnames(aux)[colnames(aux) == "id_persona"] <- "from"
-  aux2 <- aux[, -1]
+  #colnames(aux)[colnames(aux) == "id_persona"] <- "from"
+  #aux2 <- aux[, -1]
   
-  edge_marriage <- aux2 %>%
-    filter(!is.na(to))
+  #edge_marriage <- aux2 %>%
+  #  filter(!is.na(to))
   
   edge_marriage$type <- "marriage"
   edge_marriage$color <- 3
@@ -208,7 +236,7 @@ household_process <- function(i, data_ergomitos) {
   # Crear el grafo
   marriage_net <- graph_from_data_frame(d = edge_marriage, vertices = nodes, directed = TRUE)
   
-  # Validar que los atributos coincidan con los nodos
+   # Validar que los atributos coincidan con los nodos
   if (length(V(marriage_net)) != nrow(covariates)) {
     warning(paste("Número de vértices no coincide con las covariables en el hogar", i))
     return(list(household_id = i, warning = "Vertices no coinciden con covariables"))
@@ -223,16 +251,15 @@ household_process <- function(i, data_ergomitos) {
   V(marriage_net)$r1b_pais_esp <- as.integer(covariates$r1b_pais_esp)
   V(marriage_net)$ecivil <- as.character(covariates$ecivil)
   V(marriage_net)$r3 <- as.character(covariates$r3)
-  V(marriage_net)$s17 <- as.character(covariates$s17)
   V(marriage_net)$s28 <- as.character(covariates$s28)
-  V(marriage_net)$comuna <- as.character(covariates$comuna)
-  V(marriage_net)$region <- as.character(covariates$region)
-  V(marriage_net)$ytotcor <- as.character(covariates$ytotcor)
+  V(marriage_net)$comuna <- as.integer(covariates$comuna)
+  V(marriage_net)$region <- as.integer(covariates$region)
+  V(marriage_net)$ytotcor <- as.numeric(covariates$ytotcor)
   V(marriage_net)$edad_laboral <- as.numeric(covariates$edad_laboral)
   V(marriage_net)$edad_legal <- as.numeric(covariates$edad_legal)
   V(marriage_net)$edad_dependencia_estudios <- as.numeric(covariates$edad_dependencia_estudios)
   
-  grafo <- list(i = i, marriage_net = marriage_net)
+  grafo <- list(household_i = i, marriage_net = marriage_net)
   
   return(grafo)
 }
@@ -266,7 +293,7 @@ marriage_igraph <- foreach(i = unique(data_ergomitos$household),
 end.time <- Sys.time()
 time.taken_parallel <- end.time - start.time
 stopCluster(cl)
-
+beep(1)
 # Filtrar resultados
 successful_graphs <- marriage_igraph[!sapply(marriage_igraph, function(x) is.null(x$marriage_net))]
 failed_graphs <- marriage_igraph[sapply(marriage_igraph, function(x) is.null(x$marriage_net))]
@@ -278,6 +305,7 @@ message("Total hogares fallidos: ", length(failed_graphs))
 
 # Guardar los resultados en un archivo
 save(marriage_igraph, file = "Ergomitos/Redes/marriage_igraph.RData")
+plot(marriage_igraph[300][[1]]$marriage_net)
 
 #Creamos una lista en formato Network
 
@@ -386,11 +414,11 @@ failed_graphs <- dependency_igraph[sapply(dependency_igraph, function(x) is.null
 # Resultados finales
 message("Total hogares procesados: ", length(unique(data_ergomitos$household)))
 message("Total hogares completos: ", length(successful_graphs))
-message("Total hogares fallidos: ", length(failed_graphs)) #93 fallidos
+message("Total hogares fallidos: ", length(failed_graphs)) 
 
 # Guardar los resultados en un archivo
 save(dependency_igraph, file = "Ergomitos/Redes/dependency_igraph.RData")
-
+plot(dependency_igraph[300][[1]]$dependency_net)
 a <- dependency_igraph
 
 dependency_network <- lapply(a, function(j) {
@@ -531,6 +559,8 @@ message("Total hogares fallidos: ", length(failed_graphs))
 
 save(kinship_igrpah, file = paste0(getwd(), "/Ergomitos/Redes/kinship_igrpah.RData"))
 beep(1)
+plot(kinship_igrpah[300][[1]]$kinship_net)
+
 a <- kinship_igrpah
 kinship_network<- lapply(a, function(j) {
   j$kinship_net <- asNetwork(j$kinship_net)

@@ -26,44 +26,34 @@ library(intergraph)
 library(network)
 
 ##################### ADMINISTRACIÓN DE LOS DATOS ##############################
-load("Data/ori_Casen2020_rdata.RData")
+load("Ergomitos/Data/ori_Casen2020_rdata.RData") #Data completa CASEN para consultar
+load("Ergomitos/Data/Data_Ergomitos.RData") #Data para Ergomitos
 
-###Integración de nuevas variables
-#e6a nivel educativo
-#o1 trabajó la semana pasada
-#r1b_pais_esp nacionalidad
-#r3 pueblo indígena
-#s17 tuvo consulta médica
-#s28 ha estado en tratamiento médico (12 meses)
-data<- ori_Casen2020_STATA %>%
-  select(id_vivienda, id_persona, edad, sexo,e6a,o1,r1b_pais_esp, pco1, h5, ecivil, h5_1, h5_2, r1b_pais_esp,nucleo, pco2, r3,s17,s28,y1,y1_preg, comuna, region) %>%
-  filter(!id_vivienda %in% c(8102104907, 6106100505, 9115300202)) %>%
-  rename(household = id_vivienda, sex = sexo) %>%
-  mutate(
-    sex = factor(sex, levels = c(1, 2), labels = c("Hombre", "Mujer")),
-    household = as.numeric(household),
-    across(c(e6a,pco1, ecivil, pco2, r3, s17,o1, y1_preg), as_factor),
-    r1b_pais_esp = ifelse(r1b_pais_esp == "", 1,
-                          ifelse(r1b_pais_esp == "NO RESPONDE", 3, 2))
-  )
-save(data, file = "Ergomitos/Data/Data.RData")
-#data <- data %>%
-# mutate_all(~ ifelse(is.na(.), "No_aplica", .))
+### Variables en la data ###
+# edad - edad numérico
+# sexo - sexo binario levels: 1(Hombre), 2(Mujer)
+# e6a  - nivel educativo: "¿Cuál es el nivel más alto alcanzado o el nivel educacional actual?", 17 labels de 1 "Nunca asistío" hasya 17 "Posgrado"
+# o1   - ¿trabajó la semana pasada? binario: 1(si), 2(no)
+# r1b_pais_esp - nacionalidad levels: 1(chileno), 2(extranjero), 3(no responde) 
+# ecivil - estado civil levels: 1 "Casado(a)" hasta 9 "No sabe\\No responde"
+# r3   - pueblo indígena levels:1-10 distintos pueblos indígenas, 11 - no pertenece a un pueblo indígena
+# s28  - ha estado en tratamiento médico (12 meses) levels: 1(si), 2(no), 3(No sabe/No recuerda)
+# comuna - comuna 
+# region - región 
+# ytotcor - Ingreso total del hogar numérico en pesos (CLP) 
+# edad_laboral - binaria: 1 (>=15 años), 2(<= 15 años)
+# edad_legal - binaria: 1 (>=18 años), 2(<= 18 años)
+# edad_dependencia_estudios - binaria: 1 (>=28 años), 2(<= 28 años)
 
 ###Utiliza set de la data ###
 set.seed(400)  # Fijar semilla para reproducibilidad
-id_vivienda_sample <- sample(unique(data$household), size =1000,replace = F)
+id_vivienda_sample <- sample(unique(data_ergomitos$household), size =1000,replace = F)
 # Crear subset con los 1000 id_vivienda seleccionados
-data_subset <- data %>%
+data_subset <- data_ergomitos %>%
   filter(household %in% id_vivienda_sample)
 # Verificar el número de filas en el subset
 nrow(data_subset)
 length(unique(data_subset$household))
-
-#### Creacion de directorio ####
-if (!dir.exists("Ergomitos/Redes")) {
-  dir.create("Redes")
-}
 
 ########################### CREACION DE REDES ##################################
 ########################## RED DE DESCENDENCIA #################################
@@ -99,7 +89,7 @@ household_process <- function(i, data_subset) {
   edge_descent$color <- 1
   
   # Variables de los nodos
-  myvars <- c("id_persona", "sex", "edad", "ecivil", "e6a", "o1", "r1b_pais_esp", "r3", "s17", "s28", "y1", "y1_preg", "region", "comuna")
+  myvars <- c("id_persona", "sex", "edad", "ecivil", "e6a", "o1", "r1b_pais_esp", "r3", "s28", "region", "comuna","edad_laboral","edad_legal","edad_dependencia_estudios","ytotcor")
   covariates <- household_i[myvars]
   nodes <- sort(covariates$id_persona)
   
@@ -115,12 +105,13 @@ household_process <- function(i, data_subset) {
     V(descent_net)$r1b_pais_esp <- as.integer(covariates$r1b_pais_esp)
     V(descent_net)$ecivil <- as.character(covariates$ecivil)
     V(descent_net)$r3 <- as.character(covariates$r3)
-    V(descent_net)$s17 <- as.character(covariates$s17)
     V(descent_net)$s28 <- as.integer(covariates$s28)
-    V(descent_net)$y1 <- as.character(covariates$y1)
-    V(descent_net)$y1_preg <- as.character(covariates$y1_preg)
-    V(descent_net)$comuna <- as.character(covariates$comuna)
-    V(descent_net)$region <- as.character(covariates$region)
+    V(descent_net)$comuna <- as.integer(covariates$comuna)
+    V(descent_net)$region <- as.integer(covariates$region)
+    V(descent_net)$ytotcor <- as.character(covariates$ytotcor)
+    V(descent_net)$edad_laboral <- as.numeric(covariates$edad_laboral)
+    V(descent_net)$edad_legal <- as.numeric(covariates$edad_legal)
+    V(descent_net)$edad_dependencia_estudios <- as.numeric(covariates$edad_dependencia_estudios)
     
     grafo <- list(i = i, descent_net = descent_net)
   } else {
@@ -193,31 +184,41 @@ household_process <- function(i, data_subset) {
   # Crear nodos y aristas
   nodes_list <- tibble(household_id_persona = as.character(household_i$id_persona))
   
-  aux <- household_i %>% 
+  edge_marriage <- household_i %>%
+    filter(!is.na(h5) & h5 != 0) %>%
     group_by(h5) %>%
-    summarise(to = id_persona[1], .groups = 'drop') %>%
-    right_join(household_i, by = "h5") %>%
-    filter(id_persona != to)
+    #summarise(to = id_persona[1]) %>%
+    #right_join(household_i) %>%
+    #filter(id_persona != to)
+    summarise(
+      from = rep(id_persona, each = length(id_persona)),
+      to = rep(id_persona, times = length(id_persona)),
+      .groups = "drop"
+    ) %>%
+    filter(from != to) %>%  # Eliminar autoreferencias
+    distinct() %>%  # Eliminar duplicados (A-B vs B-A)
+    ungroup() %>%
+    select(from, to) %>%
+    mutate(type = "marriage", color = 3)
   
-  aux <- rbind(
-    aux %>% select(h5, id_persona, to),
-    aux %>% select(h5, id_persona = to, to = id_persona)
-  )
+  # aux <- rbind(
+  #  aux %>% select(h5, id_persona, to),
+  #  aux %>% select(h5, id_persona = to, to = id_persona)
+  #)
   
-  aux$to[is.na(aux$h5)] <- NA
+  #aux$to[is.na(aux$h5)] <- NA
   
-  colnames(aux)[colnames(aux) == "id_persona"] <- "from"
-  aux2 <- aux[, -1]
+  #colnames(aux)[colnames(aux) == "id_persona"] <- "from"
+  #aux2 <- aux[, -1]
   
-  edge_marriage <- aux2 %>%
-    filter(!is.na(to))
+  #edge_marriage <- aux2 %>%
+  #  filter(!is.na(to))
   
   edge_marriage$type <- "marriage"
   edge_marriage$color <- 3
-  
+  edge_marriage<-rbind(edge_marriage)
   # Variables para los nodos
-  myvars <- c("id_persona", "sex", "edad", "ecivil", "e6a", "o1", "r1b_pais_esp", 
-              "r3", "s17", "s28", "y1", "y1_preg", "region", "comuna")
+  myvars <- c("id_persona", "sex", "edad", "ecivil", "e6a", "o1", "r1b_pais_esp", "r3", "s28", "region", "comuna","edad_laboral","edad_legal","edad_dependencia_estudios","ytotcor")
   covariates <- household_i[myvars]
   nodes <- sort(covariates$id_persona)
   
@@ -239,12 +240,13 @@ household_process <- function(i, data_subset) {
   V(marriage_net)$r1b_pais_esp <- as.integer(covariates$r1b_pais_esp)
   V(marriage_net)$ecivil <- as.character(covariates$ecivil)
   V(marriage_net)$r3 <- as.character(covariates$r3)
-  V(marriage_net)$s17 <- as.character(covariates$s17)
   V(marriage_net)$s28 <- as.character(covariates$s28)
-  V(marriage_net)$y1 <- as.character(covariates$y1)
-  V(marriage_net)$y1_preg <- as.character(covariates$y1_preg)
-  V(marriage_net)$comuna <- as.character(covariates$comuna)
-  V(marriage_net)$region <- as.character(covariates$region)
+  V(marriage_net)$comuna <- as.integer(covariates$comuna)
+  V(marriage_net)$region <- as.integer(covariates$region)
+  V(marriage_net)$ytotcor <- as.numeric(covariates$ytotcor)
+  V(marriage_net)$edad_laboral <- as.numeric(covariates$edad_laboral)
+  V(marriage_net)$edad_legal <- as.numeric(covariates$edad_legal)
+  V(marriage_net)$edad_dependencia_estudios <- as.numeric(covariates$edad_dependencia_estudios)
   
   grafo <- list(i = i, marriage_net = marriage_net)
 
@@ -333,7 +335,7 @@ household_process <- function(i, data_subset) {
   edge_dependency$color <- 2
   
   # Variables para los nodos
-  myvars <- c("id_persona", "sex", "edad", "ecivil", "e6a", "o1", "r1b_pais_esp", "r3", "s17", "s28", "y1", "y1_preg", "region", "comuna")
+  myvars <- c("id_persona", "sex", "edad", "ecivil", "e6a", "o1", "r1b_pais_esp", "r3", "s28", "region", "comuna","edad_laboral","edad_legal","edad_dependencia_estudios","ytotcor")
   covariates <- household_i[myvars]
   nodes <- sort(covariates$id_persona)
   edge_dependency <- edge_dependency[edge_dependency$from %in% nodes_list$household_id_persona & 
@@ -351,12 +353,13 @@ household_process <- function(i, data_subset) {
   V(dependency_net)$r1b_pais_esp <- as.integer(covariates$r1b_pais_esp)
   V(dependency_net)$ecivil <- as.character(covariates$ecivil)
   V(dependency_net)$r3 <- as.character(covariates$r3)
-  V(dependency_net)$s17 <- as.character(covariates$s17)
   V(dependency_net)$s28 <- as.character(covariates$s28)
-  V(dependency_net)$y1 <- as.character(covariates$y1)
-  V(dependency_net)$y1_preg <- as.character(covariates$y1_preg)
   V(dependency_net)$comuna <- as.character(covariates$comuna)
   V(dependency_net)$region <- as.character(covariates$region)
+  V(dependency_net)$ytotcor <- as.numeric(covariates$ytotcor)
+  V(dependency_net)$edad_laboral <- as.numeric(covariates$edad_laboral)
+  V(dependency_net)$edad_legal <- as.numeric(covariates$edad_legal)
+  V(dependency_net)$edad_dependencia_estudios <- as.numeric(covariates$edad_dependencia_estudios)
   
   grafo <- list(i = i, dependency_net = dependency_net)
   return(grafo) 
@@ -440,7 +443,7 @@ household_process <- function(i, data_subset) {
   edge_dependency$color <- 2
   edge_dependency<-rbind(edge_dependency)
   
-  myvars <- c("id_persona", "sex", "edad","ecivil","e6a","o1","r1b_pais_esp","r3","s17","s28","y1","y1_preg", "region", "comuna")
+  myvars <- c("id_persona", "sex", "edad", "ecivil", "e6a", "o1", "r1b_pais_esp", "r3", "s28", "region", "comuna","edad_laboral","edad_legal","edad_dependencia_estudios","ytotcor")
   covariates <- household_i[myvars]
   nodes <- sort(covariates$id_persona)
   
@@ -454,12 +457,13 @@ household_process <- function(i, data_subset) {
   V(dependency_net)$r1b_pais_esp <- as.integer(covariates$r1b_pais_esp)
   V(dependency_net)$ecivil <- as.character(covariates$ecivil)
   V(dependency_net)$r3 <- as.character(covariates$r3)
-  V(dependency_net)$s17 <- as.character(covariates$s17)
   V(dependency_net)$s28 <- as.character(covariates$s28)
-  V(dependency_net)$y1 <- as.character(covariates$y1)
-  V(dependency_net)$y1_preg <- as.character(covariates$y1_preg)
   V(dependency_net)$comuna <- as.character(covariates$comuna)
   V(dependency_net)$region <- as.character(covariates$region)
+  V(dependency_net)$ytotcor <- as.numeric(covariates$ytotcor)
+  V(dependency_net)$edad_laboral <- as.numeric(covariates$edad_laboral)
+  V(dependency_net)$edad_legal <- as.numeric(covariates$edad_legal)
+  V(dependency_net)$edad_dependencia_estudios <- as.numeric(covariates$edad_dependencia_estudios)
   
   
   grafo <- list(household_i = i, dependency_net = dependency_net)
@@ -553,7 +557,7 @@ household_process <- function(i, data_subset) {
   
   
   names(household_i)
-  myvars <- c("id_persona", "sex", "edad","ecivil","e6a","o1","r1b_pais_esp","r3","s17","s28","y1","y1_preg", "region", "comuna")
+  myvars <- c("id_persona", "sex", "edad", "ecivil", "e6a", "o1", "r1b_pais_esp", "r3", "s28", "region", "comuna","edad_laboral","edad_legal","edad_dependencia_estudios","ytotcor")
   covariates <- household_i[myvars]
   
   nodes <- sort(covariates$id_persona)
@@ -569,13 +573,13 @@ household_process <- function(i, data_subset) {
   V(kinship_net)$r1b_pais_esp <- as.integer(covariates$r1b_pais_esp)
   V(kinship_net)$ecivil <- as.character(covariates$ecivil)
   V(kinship_net)$r3 <- as.character(covariates$r3)
-  V(kinship_net)$s17 <- as.character(covariates$s17)
   V(kinship_net)$s28 <- as.character(covariates$s28)
-  V(kinship_net)$y1 <- as.character(covariates$y1)
-  V(kinship_net)$y1_preg <- as.character(covariates$y1_preg)
   V(kinship_net)$comuna <- as.character(covariates$comuna)
   V(kinship_net)$region <- as.character(covariates$region)
-  
+  V(kinship_net)$ytotcor <- as.numeric(covariates$ytotcor)
+  V(kinship_net)$edad_laboral <- as.numeric(covariates$edad_laboral)
+  V(kinship_net)$edad_legal <- as.numeric(covariates$edad_legal)
+  V(kinship_net)$edad_dependencia_estudios <- as.numeric(covariates$edad_dependencia_estudios)
   
   grafo <- list(household_i = i, kinship_net = kinship_net)
   return(grafo)

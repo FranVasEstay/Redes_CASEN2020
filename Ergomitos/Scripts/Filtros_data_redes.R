@@ -5,54 +5,10 @@
 ############################ FILTRO DE VIVIENDAS ###############################
 ################################################################################
 
-###### LIBRERÍAS ######
-library(beepr) #beep(8)
-library(tidyverse)
-library(igraph)
-library(haven)
-library(tibble)
-library(reshape2)
-library(tryCatchLog)
-library(futile.logger)
-library(dplyr)
-library(tidyr)
-library(furrr)
-library(doParallel)
-library(iterators)
-library(parallel)
-library(progress)
-library(doSNOW)
-library(progress)
-library(sjmisc)
-library(intergraph)
-library(progress)
-
 ##### DATA ####
-data_filtrada <- ori_Casen2020_STATA %>%
-  select(id_vivienda, id_persona, edad, sexo, e6a, o1, r1b_pais_esp, pco1, h5, ecivil, h5_1, h5_2, r1b_pais_esp, nucleo, pco2, r3, s28, comuna, region, ytotcor) %>%
-  filter(!id_vivienda %in% c(8102104907, 6106100505, 9115300202)) %>%
-  rename(household = id_vivienda, sex = sexo) %>%
-  mutate(
-    sex = factor(sex, levels = c(1, 2), labels = c("Hombre", "Mujer")),
-    household = as.numeric(household),
-    r1b_pais_esp = case_when(
-      r1b_pais_esp == "" ~ 1,
-      r1b_pais_esp %in% c("NO RESPONDE", "NO BIEN ESPECIFICADO") ~ 0,
-      TRUE ~ 2
-    ),
-    r3 = ifelse(as.numeric(r3) >= 1 & as.numeric(r3) <= 10, 1, # Sí (1-10)
-                ifelse(as.numeric(r3) == 11, 2, 0)), # No (11)
-    s28 = case_when(
-      s28 %in% 1:21 ~ "Si",
-      s28 %in% c(22, 99) ~ "No",
-      TRUE ~ as.character(s28)
-    ),
-    # Nuevas variables de edad
-    edad_laboral = ifelse(edad >= 15, 1, 0),          # 15+ años (edad laboral)
-    edad_legal = ifelse(edad >= 18, 1, 0),            # 18+ años (mayoría de edad)
-    edad_dependencia_estudios = ifelse(edad >= 28, 1, 0), # 28+ años (límite dependencia estudios)
-    across(c(e6a, pco1, ecivil, pco2, r3, o1, s28, r1b_pais_esp), as_factor)
-  ) %>%
+load("Ergomitos/Data/Data_Ergomitos.RData") #Data para Ergomitos
+
+data_filtrada <- data_ergomitos %>%
   # Calcular el tamaño del hogar y filtrar por tamaño (más de 1 integrante)
   group_by(household) %>%
   mutate(household_size = n()) %>% # Número de personas en cada hogar
@@ -97,12 +53,8 @@ variables_sin_nas <- tabla_nas %>%
 cat("Variables sin NAs (sin valores distintos a 0):\n")
 print(variables_sin_nas) #edad,sexo, nivel educativo,nacionalidad,pueblo indígena,ha estado en tratamiento en los 12 ultimos meses.
 
-#Cambiar NAs por 0
-#data_filtrada <- data_filtrada %>%
-#  mutate_all(~ ifelse(is.na(.), 0, .))
-
 #Cuales hogares presentan variación
-variacion_respuestas <- data %>%
+variacion_respuestas <- data_ergomitos %>%
   group_by(household) %>%
   summarise(across(everything(), ~ n_distinct(., na.rm = TRUE) > 1)) %>%
   rowwise() %>%
@@ -112,7 +64,7 @@ variacion_respuestas <- data %>%
 
 cat("\nViviendas con variación en las respuestas:\n")
 print(variacion_respuestas)
-total_viviendas <- n_distinct(data$household)
+total_viviendas <- n_distinct(data_ergomitos$household)
 viviendas_con_variacion <- nrow(variacion_respuestas)
 porcentaje_variacion <- (viviendas_con_variacion / total_viviendas) * 100
 
@@ -120,7 +72,7 @@ porcentaje_variacion <- (viviendas_con_variacion / total_viviendas) * 100
 cat("\nPorcentaje de viviendas con variación en las respuestas:", round(porcentaje_variacion, 2), "%\n")
 
 # Crear tabla de variación por vivienda (porcentaje de variables con variación)
-frecuencia_variacion <- data %>%
+frecuencia_variacion <- data_ergomitos %>%
   group_by(household) %>%  # Agrupar por cada vivienda
   summarise(across(everything(), ~ n_distinct(., na.rm = TRUE), .names = "var_{.col}")) %>%
   mutate(variacion = rowSums(across(starts_with("var_"), ~ . > 1))) %>% 
@@ -132,7 +84,7 @@ cat("\nFrecuencia porcentual de la variación por vivienda:\n")
 print(frecuencia_variacion)
 
 # Calcular el porcentaje de variación por cada variable en cada hogar
-tabla_frecuencia_variacion <- data %>%
+tabla_frecuencia_variacion <- data_ergomitos %>%
   group_by(household) %>% 
   summarise(across(everything(), 
                    ~ mean(n_distinct(.)) / n() * 100, 
@@ -142,10 +94,6 @@ tabla_frecuencia_variacion <- data %>%
 # Mostrar la tabla de frecuencias de variación porcentual
 cat("\nPorcentaje de variación por variable en cada hogar:\n")
 View(tabla_frecuencia_variacion)
-
-save(data_filtrada, file = "Ergomitos/Data/Data_filtrada.RData")
-
-
 
 ########################### CREACION DE REDES ##################################
 load("Ergomitos/Data/Data_filtrada.RData")
