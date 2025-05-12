@@ -282,7 +282,7 @@ message("Total hogares completos: ", length(successful_graphs))
 message("Total hogares fallidos: ", length(failed_graphs))
 
 # Guardar los resultados en un archivo
-save(successful_graphs, file = "Ergomitos/Redes/marriage_igraph_filtred_subset100.RData")
+save(marriage_igraph_filtred, file = "Ergomitos/Redes/marriage_igraph_filtred_subset100.RData")
 beep(1)
 #Creamos una lista en formato Network
 
