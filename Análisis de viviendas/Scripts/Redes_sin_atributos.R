@@ -23,12 +23,42 @@ library(progress)
 library(doSNOW)
 library(progress)
 library(sjmisc)
-library(ggplot2)
 
-##################### ADMINISTRACIÓN DE LOS DATOS ##############################
-###### CARGAR DATA ######
-load("Análisis de viviendas/Data/Data.RData")
+######################## CREAR FINGERPRINT DE CADA RED #########################
+## Primero procesar los edges y luego quitar atributos.
+load("Ergomitos/Redes/kinship_igrpah.RData") #Cargar red de Kinship
+## Filtrar y procesar redes con más de un nodo
+process_large_network_list <- function(raw_list, net_name, min_nodes = 3) {
+  # Paso 1: Filtrar
+  filtered <- lapply(raw_list, function(x) {
+    if (inherits(x$kinship_net, "igraph") && vcount(x$kinship_net) >= min_nodes) {
+      return(x)
+    }
+    return(NULL)
+  })
+  filtered <- Filter(Negate(is.null), filtered)
+  
+  # Paso 2: Procesar
+  processed <- lapply(filtered, function(x) {
+    g <- x$kinship_net
+    edge_attr(g, "network_type") <- net_name
+    vertex_attr(g, "household_id") <- x$household_i
+    g
+  })
+  
+  message(sprintf(
+    "Procesamiento completado: %d redes válidas de %d originales",
+    length(processed), length(raw_list)
+  ))
+  
+  return(processed)
+}
 
+all_networks <- process_large_network_list(
+  kinship_igrpah, 
+  net_name = "kinship",
+  min_nodes = 2
+)
 ######################## QUITAR ATRIBUTOS DE LOS NODOS #########################
 ########################## RED DE DESCENDENCIA #################################
 load("Ergomitos/Redes/descent_igrpah.RData")

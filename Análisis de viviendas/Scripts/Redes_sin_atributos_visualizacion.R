@@ -5,6 +5,7 @@ library(ggplot2)
 library(gridExtra)
 library(parallel)
 library(Cairo)
+library(png)
 
 ################################################################################
 #######################Buscar estructuras de las redes##########################
@@ -19,59 +20,65 @@ net_files <- c(
 
 lapply(net_files, load, .GlobalEnv)
 
-## Filtrar y procesar redes con más de un nodo
-process_large_network_list <- function(raw_list, net_name, min_nodes = 3) {
-  # Paso 1: Filtrar
-  filtered <- lapply(raw_list, function(x) {
-    if (inherits(x$kinship_net, "igraph") && vcount(x$kinship_net) >= min_nodes) {
-      return(x)
-    }
-    return(NULL)
-  })
-  filtered <- Filter(Negate(is.null), filtered)
-  
-  # Paso 2: Procesar
-  processed <- lapply(filtered, function(x) {
-    g <- x$kinship_net
-    edge_attr(g, "network_type") <- net_name
-    vertex_attr(g, "household_id") <- x$household_i
-    g
-  })
-  
-  message(sprintf(
-    "Procesamiento completado: %d redes válidas de %d originales",
-    length(processed), length(raw_list)
-  ))
-  
-  return(processed)
-}
 
-all_networks <- process_large_network_list(
-  kinship_igraph_no_attrs, 
-  net_name = "kinship",
-  min_nodes = 2
-)
-
-## Función mejorada para identificación de estructuras únicas
+## Identificación de estructuras únicas
 identify_unique_structures <- function(networks) {
   # Agrupar por tamaño de red
   networks_by_size <- split(networks, sapply(networks, vcount))
   
   lapply(networks_by_size, function(nets) {
-    # Generar identificadores únicos basados en propiedades estructurales
-    fingerprints <- sapply(nets, function(g) {
-      deg <- sort(degree(g))
-      edge_counts <- sort(count_multiple(g))
-      paste(c(deg, edge_counts), collapse = "-")
-    })
+    unique_graphs <- list()
+    unique_fingerprints <- character()
+    fingerprint_map <- data.frame(
+      fingerprints = character(),
+      household_id = character(),
+      stringsAsFactors = FALSE
+    )
     
-    # Encontrar estructuras únicas
-    unique_ids <- unique(fingerprints)
-    freq_table <- as.data.frame(table(fingerprints))
+    for (g in nets) {
+      # Crear fingerprint robusto al orden
+      deg_hist <- sort(table(degree(g)), decreasing = TRUE)
+      mult_hist <- sort(table(count_multiple(g)), decreasing = TRUE)
+      fingerprint <- paste(
+        paste(names(deg_hist), deg_hist, sep = ":", collapse = ","),
+        paste(names(mult_hist), mult_hist, sep = ":", collapse = ","),
+        sep = "|"
+      )
+      
+      is_duplicate <- FALSE
+      
+      if (fingerprint %in% unique_fingerprints) {
+        # Comparar isomorfismo estructural con los ya guardados
+        for (existing_g in unique_graphs) {
+          if (graph.isomorphic(g, existing_g)) {
+            is_duplicate <- TRUE
+            break
+          }
+        }
+      }
+      
+      if (!is_duplicate) {
+        unique_graphs[[length(unique_graphs) + 1]] <- g
+        unique_fingerprints <- c(unique_fingerprints, fingerprint)
+      }
+      
+      # Agregar al mapa de fingerprints
+      fingerprint_map <- rbind(
+        fingerprint_map,
+        data.frame(
+          fingerprints = fingerprint,
+          household_id = vertex_attr(g, "household_id")[1],
+          stringsAsFactors = FALSE
+        )
+      )
+    }
+    
+    freq_table <- as.data.frame(table(fingerprint_map$fingerprints))
     
     list(
-      unique_graphs = nets[match(unique_ids, fingerprints)],
-      freq_table = freq_table
+      unique_graphs = unique_graphs,
+      freq_table = freq_table,
+      fingerprint_map = fingerprint_map
     )
   })
 }
@@ -81,15 +88,25 @@ size_results <- identify_unique_structures(all_networks)
 
 # 5. Generación de reporte consolidado
 generate_analysis_report <- function(results) {
-  # Crear tabla de frecuencias
+  # Crear tabla de frecuencias extendida
   freq_table <- bind_rows(lapply(names(results), function(size) {
-    data.frame(
-      Nodos = as.integer(size),
-      Estructura = results[[size]]$freq_table$fingerprints,
-      Frecuencia = results[[size]]$freq_table$Freq,
-      stringsAsFactors = FALSE
-    )
-  }))
+    basic <- results[[size]]$freq_table
+    extended <- results[[size]]$fingerprint_map
+    
+    # Unir las tablas por fingerprint
+    joined <- basic %>%
+      left_join(extended, by = c("Var1" = "fingerprints")) %>%
+      group_by(Var1) %>%
+      summarise(
+        Nodos = as.integer(size),
+        Frecuencia = unique(Freq),
+        #Households = paste(unique(household_id), collapse = "; "),
+        .groups = "drop"
+      ) %>%
+      rename(fingerprints = Var1)
+    
+    joined %>% select(Nodos, fingerprints, Frecuencia, #Households#
+    )  }))
   
   # Guardar tabla
   write.csv(freq_table, "Análisis de viviendas/Analisis/resumen_estructuras.csv", row.names = FALSE)
@@ -106,7 +123,7 @@ cat("- Total de redes analizadas:", length(all_networks), "\n")
 cat("- Tamaños de hogar encontrados:", paste(names(size_results), collapse = ", "), "\n")
 cat("- Estructuras únicas identificadas:", sum(sapply(size_results, function(x) nrow(x$freq_table))), "\n")
 cat("- Archivos generados en directorio 'Analisis/'\n")
-cat("- Tabla resumen guardada como 'resumen_estructuras.csv'\n")
+cat("- Tabla resumen guardada como 'resumen_estructuras_con_ids.csv'\n")
 
 ########################### PLOTEAR ############################################
 # Directorio de salida
@@ -142,10 +159,10 @@ visualize_unique_structures <- function(size_results, output_dir) {
     for (i in seq_along(unique_graphs)) {
       g <- unique_graphs[[i]]
       freq <- freq_table$Freq[i]
-      structure_id <- freq_table$fingerprints[i]
+      structure_id <- freq_table$Var1[i]
       
       # Nombre de archivo seguro
-      safe_id <- gsub("[^[:alnum:]]", "_", structure_id)
+      safe_id <- substr(gsub("[^[:alnum:]]", "_", structure_id), 1, 50)
       file_name <- file.path(size_dir, 
                              paste0("Estructura_", size, "_", safe_id, ".pdf"))
       
@@ -181,34 +198,8 @@ visualize_unique_structures <- function(size_results, output_dir) {
   }
 }
 
-## 3. Función para resumen gráfico ----
-create_summary_plot <- function(final_report, output_dir) {
-  # Preparar datos
-  plot_data <- final_report %>%
-    group_by(Nodos) %>%
-    mutate(Percent = Frecuencia / sum(Frecuencia) * 100) %>%
-    ungroup()
-  
-  # Gráfico de resumen
-  p <- ggplot(plot_data, aes(x = Nodos, y = Percent, fill = Estructura)) +
-    geom_bar(stat = "identity") +
-    labs(title = "Distribución de Estructuras Familiares por Tamaño de Hogar",
-         x = "Número de miembros en el hogar",
-         y = "Porcentaje de ocurrencia",
-         fill = "Patrón de conexiones") +
-    theme_minimal() +
-    theme(legend.position = "bottom",
-          legend.text = element_text(size = 7))
-  
-  # Guardar gráfico
-  ggsave(file.path(output_dir, "resumen_estructuras.pdf"), 
-         plot = p, width = 12, height = 8)
-}
 # Generar visualizaciones
 visualize_unique_structures(size_results, output_dir)
-
-# Crear resumen gráfico
-create_summary_plot(final_report, output_dir)
 
 # Mensaje final
 message("\nAnálisis completado exitosamente!")
@@ -217,7 +208,7 @@ message("- Tabla de frecuencias: resumen_estructuras.csv")
 message("- Imágenes de redes: directorio Estructuras_Unicas/")
 message("- Resumen gráfico: resumen_estructuras.pdf")
 
-##################### GENERAR UN SOLO PLOT #####################################
+############ GENERAR UN SOLO PLOT POR TAMAÑO DE VIVIENDA #######################
 library(grid)
 library(gridExtra)
 create_edge_color_legend <- function(graphs) {
@@ -235,7 +226,7 @@ create_edge_color_legend <- function(graphs) {
   # Crear una leyenda simple usando grobs
   legend_items <- lapply(seq_len(nrow(df)), function(i) {
     color_box <- rectGrob(width = unit(0.4, "cm"), height = unit(0.4, "cm"),
-                          gp = gpar(fill = df$color[i], col = "orange"))
+                          gp = gpar(fill = df$color[i], col = "black"))
     label <- textGrob(label = df$label[i], x = unit(0, "npc"), just = "left",
                       gp = gpar(fontsize = 9))
     arrangeGrob(color_box, label, ncol = 2, widths = c(0.5, 2))
@@ -256,7 +247,7 @@ generate_consolidated_graphs <- function(size_results, output_dir) {
     plots <- lapply(seq_along(unique_graphs), function(i) {
       g <- unique_graphs[[i]]
       freq <- freq_table$Freq[i]
-      structure_id <- freq_table$fingerprints[i]
+      structure_id <- freq_table$Var1[i]
       
       # Crear una imagen base
       plot_file <- tempfile(fileext = ".png")
@@ -278,7 +269,7 @@ generate_consolidated_graphs <- function(size_results, output_dir) {
     
     labels <- lapply(seq_along(unique_graphs), function(i) {
       freq <- freq_table$Freq[i]
-      structure_id <- freq_table$fingerprints[i]
+      structure_id <- freq_table$Var1[i]
       textGrob(
         label = paste0("Freq: ", freq),
         gp = gpar(fontsize = 10)

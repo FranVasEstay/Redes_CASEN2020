@@ -35,9 +35,9 @@ data_filtrada <- data_ergomitos %>%
   group_by(household) %>%
   mutate(household_size = n()) %>% # Número de personas en cada hogar
   ungroup() %>%
-  filter(household_size >= 1)
+  filter(household_size > 1)
 
-length(unique(data_filtrada$household)) #son 62537 viviendas
+length(unique(data_filtrada$household)) #son 52361 viviendas
 save(data_filtrada, file = "Ergomitos/Data/Data_filtrada.RData")
 
 # Calcular casos completos
@@ -208,7 +208,7 @@ message("Total hogares completos: ", length(successful_graphs))
 message("Total hogares fallidos: ", length(failed_graphs))
 
 # Guardar los resultados en un archivo
-save(descent_igrpah_filtred, file = paste0("Ergomitos/Redes/descent_igrpah_filtrados.RData"))
+save(descent_igrpah_filtred, file = paste0("Ergomitos/Redes/descent_igrpah_filtred.RData"))
 beep(1)
 
 #Creamos una lista en formato Network
@@ -219,7 +219,7 @@ descent_network_filtred <- lapply(a, function(j) {
   j
 })
 
-save(descent_network_filtred, file = paste0("Ergomitos/Redes/descent_network_filtrados.RData"))
+save(descent_network_filtred, file = paste0("Ergomitos/Redes/descent_network_filtred.RData"))
 beep(8)
 
 ########################## RED DE MATRIMONIO ###################################
@@ -356,7 +356,7 @@ message("Total hogares completos: ", length(successful_graphs))
 message("Total hogares fallidos: ", length(failed_graphs))
 
 # Guardar los resultados en un archivo
-save(marriage_igraph_filtred, file = "Ergomitos/Redes/marriage_igraph_filtred_subset100.RData")
+save(marriage_igraph_filtred, file = "Ergomitos/Redes/marriage_igraph_filtred.RData")
 beep(1)
 #Creamos una lista en formato Network
 
@@ -368,7 +368,7 @@ marriage_network_filtred <- lapply(a, function(j) {
   j
 })
 
-save(marriage_network_filtred, file = paste0("Ergomitos/Redes/marriage_network_filtred_subset100.RData"))
+save(marriage_network_filtred, file = paste0("Ergomitos/Redes/marriage_network_filtred.RData"))
 beep(5)
 
 
@@ -548,7 +548,7 @@ failed_graphs <- dependency_igraph_filtred[sapply(dependency_igraph_filtred, fun
 # Resultados finales
 message("Total hogares procesados: ", length(unique(data_filtrada$household)))
 message("Total hogares completos: ", length(successful_graphs))
-message("Total hogares fallidos: ", length(failed_graphs)) #93 fallidos
+message("Total hogares fallidos: ", length(failed_graphs))
 
 # Guardar los resultados en un archivo
 save(dependency_igraph_filtred, file = "Ergomitos/Redes/dependency_igraph_filtred.RData")
@@ -702,10 +702,13 @@ kinship_network_filtred<- lapply(a, function(j) {
 save(kinship_network_filtred, file = paste0(getwd(), "/Ergomitos/Redes/kinship_network_filtred.RData"))
 beep(8)
 
-#Revisar las redes
+##Revisar las redes
 View(data_filtrada)
-descent_igrpah_filtred[300][[1]]$i
+#por id
+View(filter(ori_Casen2020_STATA,id_vivienda==110110210701))
+
+#por número
 plot(descent_igrpah_filtred[300][[1]]$descent_net)
-plot(marriage_igraph_filtred[300][[1]]$marriage_net)
+plot(marriage_igrpah_filtred[300][[1]]$marriage_net)
 plot(dependency_igraph_filtred[300][[1]]$dependency_net)
 plot(kinship_igrpah_filtred[300][[1]]$kinship_net)

@@ -63,9 +63,10 @@ data_ergomitos<- ori_Casen2020_STATA %>%
   ) %>%
   # Reemplazar NA por "No_aplica" solo en variables específicas
   mutate(across(
-    .cols = -c(household, id_persona, edad, sex, pco1, h5, h5_1, pco2, comuna, region, h5_2,
-               edad_laboral, edad_legal, edad_dependencia_estudios,ytotcor),
+    .cols = -c(household, id_persona, edad, sex, pco1, h5, h5_1, pco2, comuna, region, h5_2, edad_laboral, edad_legal, edad_dependencia_estudios,ytotcor),
     .fns = ~ ifelse(is.na(.), "No_aplica", .)))
+
+length(unique(data_ergomitos$household)) # 62537
 save(data_ergomitos, file = "Ergomitos/Data/Data_Ergomitos.RData")
 
 ########################### CREACION DE REDES ##################################
@@ -210,7 +211,7 @@ household_process <- function(i, data_ergomitos) {
     distinct() %>%  # Eliminar duplicados (A-B vs B-A)
     ungroup() %>%
     select(from, to) %>%
-    mutate(type = "marriage", color = 3)
+    mutate(type = "marriage", color = "darkgreen")
   
  # aux <- rbind(
   #  aux %>% select(h5, id_persona, to),
@@ -226,7 +227,7 @@ household_process <- function(i, data_ergomitos) {
   #  filter(!is.na(to))
   
   edge_marriage$type <- "marriage"
-  edge_marriage$color <- 3
+  edge_marriage$color <- "darkgreen"
   edge_marriage<-rbind(edge_marriage)
   # Variables para los nodos
   myvars <- c("id_persona", "sex", "edad", "ecivil", "e6a", "o1", "r1b_pais_esp", "r3", "s28", "region", "comuna","edad_laboral","edad_legal","edad_dependencia_estudios","ytotcor")
@@ -343,7 +344,7 @@ household_process <- function(i, data_ergomitos) {
   edge_dependency$from <- as.character(edge_dependency$from)
   
   edge_dependency$type <- "econ_support"
-  edge_dependency$color <- 2
+  edge_dependency$color <- "orange"
   edge_dependency<-rbind(edge_dependency)
   
   myvars <- c("id_persona", "sex", "edad","ecivil","e6a","o1","r1b_pais_esp","r3","s28", "region", "comuna","ytotcor","edad_laboral","edad_legal","edad_dependencia_estudios")

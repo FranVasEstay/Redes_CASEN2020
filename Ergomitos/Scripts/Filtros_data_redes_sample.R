@@ -112,7 +112,7 @@ household_process <- function(i, data_sample) {
 unique_households <- unique(data_sample$household)
 
 # Usar foreach para ejecutar en paralelo
-descent_igrpah_filtred <- foreach(i = unique_households, .packages = c(
+descent_igrpah_filtred_subset100 <- foreach(i = unique_households, .packages = c(
   "tidyverse", "igraph", "haven", "tibble", "reshape2", "tryCatchLog",
   "futile.logger", "dplyr", "tidyr", "doParallel", "iterators", "parallel", "progress"
 )) %dopar% {
@@ -124,8 +124,8 @@ stopCluster(cl) # Detener el clúster
 time.taken_parallel <- end.time - start.time
 time.taken_parallel
 
-successful_graphs <- descent_igrpah_filtred[!sapply(descent_igrpah_filtred, is.null)]
-failed_graphs <- descent_igrpah_filtred[sapply(descent_igrpah_filtred, is.null)]
+successful_graphs <- descent_igrpah_filtred_subset100[!sapply(descent_igrpah_filtred_subset100, is.null)]
+failed_graphs <- descent_igrpah_filtred_subset100[sapply(descent_igrpah_filtred_subset100, is.null)]
 unprocessed_households <- setdiff(unique(data_sample$household), names(successful_graphs))
 
 # Resultados finales
@@ -134,18 +134,18 @@ message("Total hogares completos: ", length(successful_graphs))
 message("Total hogares fallidos: ", length(failed_graphs))
 
 # Guardar los resultados en un archivo
-save(descent_igrpah_filtred, file = paste0("Ergomitos/Redes/descent_igrpah_filtrados_subset100.RData"))
+save(descent_igrpah_filtred_subset100, file = paste0("Ergomitos/Redes/descent_igrpah_filtred_subset100.RData"))
 beep(1)
 
 #Creamos una lista en formato Network
-a <- descent_igrpah_filtred
+a <- descent_igrpah_filtred_subset100
 
-descent_network_filtred <- lapply(a, function(j) {
+descent_network_filtred_subset100 <- lapply(a, function(j) {
   j$descent_net <- asNetwork(j$descent_net)
   j
 })
 
-save(descent_network_filtred, file = paste0("Ergomitos/Redes/descent_network_filtrados_subset100.RData"))
+save(descent_network_filtred_subset100, file = paste0("Ergomitos/Redes/descent_network_filtrados_subset100.RData"))
 beep(8)
 
 ########################## RED DE MATRIMONIO ###################################
@@ -243,7 +243,7 @@ household_process <- function(i, data_sample) {
 }
 
 # Usar foreach para ejecutar en paralelo
-marriage_igraph_filtred <- foreach(i = unique(data_sample$household),
+marriage_igraph_filtred_subset100 <- foreach(i = unique(data_sample$household),
                                    .packages = c(
                                      "tidyverse",
                                      "igraph",
@@ -273,8 +273,8 @@ time.taken_parallel <- end.time - start.time
 stopCluster(cl)
 
 # Filtrar resultados
-successful_graphs <- marriage_igraph_filtred[!sapply(marriage_igraph_filtred, function(x) is.null(x$marriage_net))]
-failed_graphs <- marriage_igraph_filtred[sapply(marriage_igraph_filtred, function(x) is.null(x$marriage_net))]
+successful_graphs <- marriage_igraph_filtred_subset100[!sapply(marriage_igraph_filtred_subset100, function(x) is.null(x$marriage_net))]
+failed_graphs <- marriage_igraph_filtred_subset100[sapply(marriage_igraph_filtred_subset100, function(x) is.null(x$marriage_net))]
 
 # Resultados finales
 message("Total hogares procesados: ", length(unique(data_sample$household)))
@@ -282,19 +282,19 @@ message("Total hogares completos: ", length(successful_graphs))
 message("Total hogares fallidos: ", length(failed_graphs))
 
 # Guardar los resultados en un archivo
-save(marriage_igraph_filtred, file = "Ergomitos/Redes/marriage_igraph_filtred_subset100.RData")
+save(marriage_igraph_filtred_subset100, file = "Ergomitos/Redes/marriage_igraph_filtred_subset100.RData")
 beep(1)
 #Creamos una lista en formato Network
 
-a <- marriage_igraph_filtred
+a <- marriage_igraph_filtred_subset100
 
 
-marriage_network_filtred <- lapply(a, function(j) {
+marriage_network_filtred_subset100 <- lapply(a, function(j) {
   j$marriage_net <- asNetwork(j$marriage_net)
   j
 })
 
-save(marriage_network_filtred, file = paste0("Ergomitos/Redes/marriage_network_filtred_subset100.RData"))
+save(marriage_network_filtred_subset100, file = paste0("Ergomitos/Redes/marriage_network_filtred_subset100.RData"))
 beep(5)
 
 # Establecer el número de núcleos para el procesamiento en paralelo
@@ -352,7 +352,7 @@ household_process <- function(i, data_sample) {
 unique_households <- unique(data_sample$household)
 
 # Usar foreach para ejecutar en paralelo
-dependency_igraph_filtred <- foreach(i = unique_households,
+dependency_igraph_filtred_subset100 <- foreach(i = unique_households,
                                      .packages = c(
                                        "tidyverse",
                                        "igraph",
@@ -435,7 +435,7 @@ unique_households <- unique(data_sample$household)
 
 # Usar foreach para ejecutar en paralelo. Acá cambié el nombre para evitar cambiar el archivo que ya está
 
-dependency_igraph_filtred <- foreach(i = unique_households,
+dependency_igraph_filtred_subset100 <- foreach(i = unique_households,
                                      #  .verbose =TRUE,
                                      .packages = c(
                                        "tidyverse",
@@ -468,8 +468,8 @@ stopCluster(cl)
 
 
 # Filtrar resultados
-successful_graphs <- dependency_igraph_filtred[!sapply(dependency_igraph_filtred, function(x) is.null(x$dependency_net))]
-failed_graphs <- dependency_igraph_filtred[sapply(dependency_igraph_filtred, function(x) is.null(x$dependency_net))]
+successful_graphs <- dependency_igraph_filtred_subset100[!sapply(dependency_igraph_filtred_subset100, function(x) is.null(x$dependency_net))]
+failed_graphs <- dependency_igraph_filtred_subset100[sapply(dependency_igraph_filtred_subset100, function(x) is.null(x$dependency_net))]
 
 # Resultados finales
 message("Total hogares procesados: ", length(unique(data_sample$household)))
@@ -477,17 +477,17 @@ message("Total hogares completos: ", length(successful_graphs))
 message("Total hogares fallidos: ", length(failed_graphs))
 
 # Guardar los resultados en un archivo
-save(dependency_igraph_filtred, file = "Ergomitos/Redes/dependency_igraph_filtred_subset100.RData")
+save(dependency_igraph_filtred_subset100, file = "Ergomitos/Redes/dependency_igraph_filtred_subset100.RData")
 beep(1)
 # Convertir a formato Network
-a <- dependency_igraph_filtred
+a <- dependency_igraph_filtred_subset100
 
-dependency_network_filtred <- lapply(a, function(j) {
+dependency_network_filtred_subset100 <- lapply(a, function(j) {
   j$dependency_net <- asNetwork(j$dependency_net)
   j
 })
 
-save(dependency_network_filtred, file = "Ergomitos/Redes/dependency_network_filtred_subset100.RData")
+save(dependency_network_filtred_subset100, file = "Ergomitos/Redes/dependency_network_filtred_subset100.RData")
 beep(5)
 
 ############################ RED KINSHIP #######################################
@@ -578,7 +578,7 @@ household_process <- function(i, data_sample) {
 }
 unique_households <- unique(data_sample$household)
 
-kinship_igrpah_filtred <- foreach(i = unique_households,
+kinship_igrpah_filtred_subset100 <- foreach(i = unique_households,
                                   #  .verbose =TRUE,
                                   .packages = c(
                                     "tidyverse",
@@ -611,20 +611,20 @@ stopCluster(cl)
 
 
 # Filtrar resultados
-successful_graphs <- kinship_igrpah_filtred[!sapply(kinship_igrpah_filtred, function(x) is.null(x$kinship_net))]
-failed_graphs <- kinship_igrpah_filtred[sapply(kinship_igrpah_filtred, function(x) is.null(x$kinship_net))]
+successful_graphs <- kinship_igrpah_filtred_subset100[!sapply(kinship_igrpah_filtred_subset100, function(x) is.null(x$kinship_net))]
+failed_graphs <- kinship_igrpah_filtred_subset100[sapply(kinship_igrpah_filtred_subset100, function(x) is.null(x$kinship_net))]
 
 # Resultados finales
 message("Total hogares procesados: ", length(unique(data_sample$household)))
 message("Total hogares completos: ", length(successful_graphs))
 message("Total hogares fallidos: ", length(failed_graphs))
 
-save(kinship_igrpah_filtred, file = paste0(getwd(), "/Ergomitos/Redes/kinship_igrpah_filtred_subset100.Rdata"))
+save(kinship_igrpah_filtred_subset100, file = paste0(getwd(), "/Ergomitos/Redes/kinship_igrpah_filtred_subset100.Rdata"))
 beep(1)
-a <- kinship_igrpah_filtred
-kinship_network_filtred<- lapply(a, function(j) {
+a <- kinship_igrpah_filtred_subset100
+kinship_network_filtred_subset100<- lapply(a, function(j) {
   j$kinship_net <- asNetwork(j$kinship_net)
   j
 })
-save(kinship_network_filtred, file = paste0(getwd(), "/Ergomitos/Redes/kinship_network_filtred_subset100.RData"))
+save(kinship_network_filtred_subset100, file = paste0(getwd(), "/Ergomitos/Redes/kinship_network_filtred_subset100.RData"))
 beep(5)
