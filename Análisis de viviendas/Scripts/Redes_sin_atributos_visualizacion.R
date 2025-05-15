@@ -1,308 +1,351 @@
 library(igraph)
-library(dplyr)
-library(forcats)
-library(ggplot2)
+library(grid)
 library(gridExtra)
-library(parallel)
-library(Cairo)
 library(png)
 
 ################################################################################
 #######################Buscar estructuras de las redes##########################
 ################################################################################
 ## Cargar de datos optimizada
-net_files <- c(
-  "Análisis de viviendas/Redes/dependency_igraph_no_attrs.RData",
-  "Análisis de viviendas/Redes/descent_igrpah_no_attrs.RData",
-  "Análisis de viviendas/Redes/kinship_igraph_no_attrs.RData",
-  "Análisis de viviendas/Redes/marriage_igraph_no_attrs.RData"
+
+# Función para obtener una huella estructural (fingerprint) de un grafo
+graph_fingerprint <- function(graph) {
+  # Copia el grafo
+  g_clean <- graph
+  
+  # Elimina todos los atributos de vértice
+  for (attr in vertex_attr_names(g_clean)) {
+    g_clean <- delete_vertex_attr(g_clean, attr)
+  }
+  
+  # Calcula permutación canónica (estructura pura)
+  perm <- canonical_permutation(g_clean)
+  canon_graph <- permute(g_clean, perm$labeling)
+  
+  # Obtiene matriz de adyacencia para fingerprint
+  adj <- as_adjacency_matrix(canon_graph, sparse = FALSE)
+  paste(adj, collapse = "")
+}
+
+# Paso 1: calcular fingerprints para todos los grafos
+fingerprints <- sapply(kinship_igraph_no_attrs, function(x) {
+  graph_fingerprint(x$kinship_net)
+})
+
+
+# Paso 2: contar frecuencias de cada fingerprint único
+freq_table <- table(fingerprints)
+unique_fps <- names(sort(freq_table, decreasing = TRUE))
+tipologia_freq <- freq_table[unique_fps_ordered]  # Reordenamos la tabla
+names(tipologia_freq) <- paste0("T", seq_along(unique_fps))
+
+# Paso 3. Mostrar la tabla
+print(tipologia_freq)
+
+# 5. Guardar un grafo de ejemplo por tipología
+examples <- lapply(unique_fps, function(fp) {
+  idx <- which(fingerprints == fp)[1]
+  kinship_igraph_no_attrs[[idx]]$kinship_net
+})
+names(examples) <- paste0("T", seq_along(unique_fps))  # Asignar nombres T1, T2, ...
+
+# 6. Graficar el ejemplo más común
+plot(
+  examples[[1]],
+  main = paste("Ejemplo de la tipología más frecuente (", names(examples)[[1]], ")"),
+  edge.label = E(examples[[1]])$type,
+  edge.arrow.size = 0.4,
+  vertex.size = 25,
+  vertex.label.cex = 0.8
+)
+plot(
+  examples[[2]],
+  main = paste("Ejemplo de la segunda tipología más frecuente (", names(examples)[[2]], ")"),
+  edge.label = E(examples[[2]])$type,
+  edge.arrow.size = 0.4,
+  vertex.size = 25,
+  vertex.label.cex = 0.8
+)
+plot(
+  examples[[10]],
+  main = paste("Ejemplo de la décima tipología más frecuente (", names(examples)[[10]], ")"),
+  edge.label = E(examples[[10]])$type,
+  edge.arrow.size = 0.4,
+  vertex.size = 25,
+  vertex.label.cex = 0.8
 )
 
-lapply(net_files, load, .GlobalEnv)
+################################################################################
+####################### Generación de Archivos de Resultados ###################
+################################################################################
 
-
-## Identificación de estructuras únicas
-identify_unique_structures <- function(networks) {
-  # Agrupar por tamaño de red
-  networks_by_size <- split(networks, sapply(networks, vcount))
-  
-  lapply(networks_by_size, function(nets) {
-    unique_graphs <- list()
-    unique_fingerprints <- character()
-    fingerprint_map <- data.frame(
-      fingerprints = character(),
-      household_id = character(),
-      stringsAsFactors = FALSE
-    )
-    
-    for (g in nets) {
-      # Crear fingerprint robusto al orden
-      deg_hist <- sort(table(degree(g)), decreasing = TRUE)
-      mult_hist <- sort(table(count_multiple(g)), decreasing = TRUE)
-      fingerprint <- paste(
-        paste(names(deg_hist), deg_hist, sep = ":", collapse = ","),
-        paste(names(mult_hist), mult_hist, sep = ":", collapse = ","),
-        sep = "|"
-      )
-      
-      is_duplicate <- FALSE
-      
-      if (fingerprint %in% unique_fingerprints) {
-        # Comparar isomorfismo estructural con los ya guardados
-        for (existing_g in unique_graphs) {
-          if (graph.isomorphic(g, existing_g)) {
-            is_duplicate <- TRUE
-            break
-          }
-        }
-      }
-      
-      if (!is_duplicate) {
-        unique_graphs[[length(unique_graphs) + 1]] <- g
-        unique_fingerprints <- c(unique_fingerprints, fingerprint)
-      }
-      
-      # Agregar al mapa de fingerprints
-      fingerprint_map <- rbind(
-        fingerprint_map,
-        data.frame(
-          fingerprints = fingerprint,
-          household_id = vertex_attr(g, "household_id")[1],
-          stringsAsFactors = FALSE
-        )
-      )
-    }
-    
-    freq_table <- as.data.frame(table(fingerprint_map$fingerprints))
-    
-    list(
-      unique_graphs = unique_graphs,
-      freq_table = freq_table,
-      fingerprint_map = fingerprint_map
-    )
-  })
-}
-
-# Ejecutar análisis
-size_results <- identify_unique_structures(all_networks)
-
-# 5. Generación de reporte consolidado
-generate_analysis_report <- function(results) {
-  # Crear tabla de frecuencias extendida
-  freq_table <- bind_rows(lapply(names(results), function(size) {
-    basic <- results[[size]]$freq_table
-    extended <- results[[size]]$fingerprint_map
-    
-    # Unir las tablas por fingerprint
-    joined <- basic %>%
-      left_join(extended, by = c("Var1" = "fingerprints")) %>%
-      group_by(Var1) %>%
-      summarise(
-        Nodos = as.integer(size),
-        Frecuencia = unique(Freq),
-        #Households = paste(unique(household_id), collapse = "; "),
-        .groups = "drop"
-      ) %>%
-      rename(fingerprints = Var1)
-    
-    joined %>% select(Nodos, fingerprints, Frecuencia, #Households#
-    )  }))
-  
-  # Guardar tabla
-  write.csv(freq_table, "Análisis de viviendas/Analisis/resumen_estructuras.csv", row.names = FALSE)
-  return(freq_table)
-}
-
-# Generar reporte final
-final_report <- generate_analysis_report(size_results)
-
-# Resultados clave
-cat("\nResumen del análisis:\n")
-cat("----------------------\n")
-cat("- Total de redes analizadas:", length(all_networks), "\n")
-cat("- Tamaños de hogar encontrados:", paste(names(size_results), collapse = ", "), "\n")
-cat("- Estructuras únicas identificadas:", sum(sapply(size_results, function(x) nrow(x$freq_table))), "\n")
-cat("- Archivos generados en directorio 'Analisis/'\n")
-cat("- Tabla resumen guardada como 'resumen_estructuras_con_ids.csv'\n")
-
-########################### PLOTEAR ############################################
-# Directorio de salida
-output_dir <- "Análisis de viviendas/Analisis"
-if (!dir.exists(output_dir)) {
-  dir.create(output_dir, recursive = TRUE)
-}
-## 2. Función para visualizar estructuras únicas ----
-visualize_unique_structures <- function(size_results, output_dir) {
-  # Crear subdirectorio para imágenes
-  img_dir <- file.path(output_dir, "Estructuras_Unicas")
-  if (!dir.exists(img_dir)) dir.create(img_dir)
-  
-  # Configuración visual
-  plot_style <- list(
-    vertex.size = 15,
-    vertex.color = "lightblue",
-    vertex.label.cex = 0.8,
-    edge.width = 1.5,
-    edge.arrow.size = 0.6,
-    margin = c(0.5, 0.5, 0.5, 0.5)
-  )
-  
-  # Procesar cada tamaño de hogar
-  for (size in names(size_results)) {
-    size_dir <- file.path(img_dir, paste0("Size_", size))
-    if (!dir.exists(size_dir)) dir.create(size_dir)
-    
-    unique_graphs <- size_results[[size]]$unique_graphs
-    freq_table <- size_results[[size]]$freq_table
-    
-    # Procesar cada estructura única
-    for (i in seq_along(unique_graphs)) {
-      g <- unique_graphs[[i]]
-      freq <- freq_table$Freq[i]
-      structure_id <- freq_table$Var1[i]
-      
-      # Nombre de archivo seguro
-      safe_id <- substr(gsub("[^[:alnum:]]", "_", structure_id), 1, 50)
-      file_name <- file.path(size_dir, 
-                             paste0("Estructura_", size, "_", safe_id, ".pdf"))
-      
-      # Generar imagen
-      pdf(file_name, width = 8, height = 7)
-      
-      # Diseño de dos partes
-      layout_matrix <- matrix(c(1, 2), nrow = 2)
-      layout(layout_matrix, heights = c(3, 1))
-      
-      # Parte superior: Red
-      par(mar = c(1, 1, 2, 1))
-      plot(g,
-           main = paste("Tamaño:", size, "nodos - Estructura", i),
-           vertex.size = plot_style$vertex.size,
-           vertex.color = plot_style$vertex.color,
-           vertex.label.cex = plot_style$vertex.label.cex,
-           edge.width = plot_style$edge.width,
-           edge.arrow.size = plot_style$edge.arrow.size)
-      
-      # Parte inferior: Información
-      par(mar = c(1, 1, 1, 1))
-      plot.new()
-      text(0.5, 0.7, paste("Configuración:", structure_id), cex = 1.2, font = 2)
-      text(0.5, 0.4, paste("Frecuencia:", freq, "hogares"), cex = 1.1)
-      text(0.5, 0.1, paste("Tipo:", unique(edge_attr(g, "network_type"))[1]), cex = 1.0)
-      
-      dev.off()
-    }
-    
-    message("Tamaño ", size, ": ", length(unique_graphs), 
-            " estructuras únicas guardadas")
+# Cargar librerías adicionales necesarias
+required_packages <- c("igraph", "ggplot2", "grid", "gridExtra", "RColorBrewer", "purrr")
+lapply(required_packages, function(pkg) {
+  if (!requireNamespace(pkg, quietly = TRUE)) {
+    install.packages(pkg)
   }
+  library(pkg, character.only = TRUE)
+})
+
+################################################################################
+## Paso 1: Crear directorios de salida
+################################################################################
+
+# Crear estructura de directorios si no existe
+dir.create("Análisis de viviendas/Analisis/Resultados_Tipologias", showWarnings = FALSE)
+dir.create("Análisis de viviendas/Analisis/Resultados_Tipologias/Graficos", showWarnings = FALSE)
+dir.create("Análisis de viviendas/Analisis/Resultados_Tipologias/Reportes", showWarnings = FALSE)
+dir.create("Análisis de viviendas/Analisis/Resultados_Tipologias/Graficos/Resumen_tamano", showWarnings = FALSE)
+
+################################################################################
+## Paso 2: Generar reporte tabular completo
+################################################################################
+
+# Crear dataframe con la información de las tipologías
+tipologia_df <- data.frame(
+  Tipologia = names(tipologia_freq),
+  Frecuencia = as.numeric(tipologia_freq),
+  Porcentaje = round(as.numeric(tipologia_freq)/length(fingerprints)*100, 2),
+  stringsAsFactors = FALSE
+) %>%
+  arrange(desc(Frecuencia))
+
+# Agregar información estructural básica
+tipologia_df$Nodos <- sapply(examples, vcount)
+tipologia_df$Aristas <- sapply(examples, ecount)
+tipologia_df$Densidad <- round(sapply(examples, edge_density), 4)
+
+# Guardar como CSV
+write.csv(tipologia_df, "Análisis de viviendas/Analisis/Resultados_Tipologias/Reportes/resumen_tipologias.csv", row.names = FALSE)
+
+# Agregar al dataframe households que coincidan
+# Crear una lista que mapee cada fingerprint a los household IDs correspondientes
+household_mapping <- lapply(unique_fps, function(fp) {
+  # Obtener los índices de todas las redes con este fingerprint
+  indices <- which(fingerprints == fp)
+  # Extraer los household IDs de estas redes
+  sapply(indices, function(i) kinship_igraph_no_attrs[[i]]$household_i)
+})
+
+# Nombrar la lista con los nombres de las tipologías (T1, T2, ...)
+names(household_mapping) <- names(tipologia_freq)
+
+# Agregar los household IDs al dataframe como una columna de listas
+tipologia_df_households <- tipologia_df
+tipologia_df_households$Households <- household_mapping[tipologia_df$Tipologia]
+
+# Convertir listas a strings para CSV
+tipologia_df_households$Households <- sapply(household_mapping[tipologia_df$Tipologia], 
+                                             function(x) paste(x, collapse = ";"))
+
+# Guardar ambos formatos
+write.csv(tipologia_df_households, "Análisis de viviendas/Analisis/Resultados_Tipologias/Reportes/households_por_tipologia.csv", row.names = FALSE)
+saveRDS(tipologia_df_households, "Análisis de viviendas/Analisis/Resultados_Tipologias/Reportes/households_por_tipologia.rds")
+
+# Versión expandida
+expanded_df <- do.call(rbind, lapply(names(household_mapping), function(tip) {
+  hh <- household_mapping[[tip]]
+  data.frame(
+    Tipologia = tip,
+    Frecuencia = length(hh),
+    Household = hh,
+    stringsAsFactors = FALSE
+  )
+}))
+
+write.csv(expanded_df, "Análisis de viviendas/Analisis/Resultados_Tipologias/Reportes/households_detallados.csv", row.names = FALSE)
+ ## agregar columna de frecuencia acumulada, relativa y absoluta.
+################################################################################
+## Paso 3: Visualización de tipologías
+################################################################################
+
+# Función mejorada para graficar tipologías
+plot_tipologia <- function(g, nombre, freq) {
+  # Configuración visual consistente
+  V(g)$color <- "#6baed6"
+  V(g)$size <- 25
+  V(g)$label.cex <- 1
+  V(g)$frame.color <- "white"
+  V(g)$label.color <- "black"
+  
+  # Configuración de aristas
+  edge_types <- if("type" %in% edge_attr_names(g)) E(g)$type else rep("descent", ecount(g))
+  
+  # Asignar colores y etiquetas según tipo
+  edge_colors <- ifelse(edge_types == "marriage", "#4daf4a", "#ff7f00")  # Verde para marriage, naranja para descent
+  edge_labels <- ifelse(edge_types == "marriage", "marriage", "descent")
+  
+  E(g)$color <- edge_colors
+  E(g)$label <- edge_labels
+  E(g)$label.color <- "black"
+  E(g)$label.cex <- 1
+  E(g)$arrow.size <- ifelse(edge_types == "marriage", 0.5, 0.4)  # Sin flecha para marriage
+  E(g)$arrow.width <- ifelse(edge_types == "marriage", 0.5, 0.8)
+  E(g)$width <- 1 #Esto es el ancho de la edge
+  E(g)$curved <- 0 # Sin curvatura para distinguir aristas paralelas
+  
+  # Archivo de salida
+  png_file <- paste0("Análisis de viviendas/Analisis/Resultados_Tipologias/Graficos/", nombre, ".png")
+  
+  # Configurar dispositivo gráfico
+  png(png_file, width = 850, height = 750, bg = "white")
+  
+  # Diseño del gráfico
+  layout(matrix(c(1, 2,3), nrow = 3), heights = c(3, 1, 0.7))
+  
+  # Gráfico de la red
+  par(mar = c(1, 1, 3, 1))
+  plot(g, main = paste("Tipología:", nombre, "| Frecuencia:", freq, "casos"),
+       vertex.label.family = "sans", edge.label.family = "sans")
+  
+  # Información adicional
+  par(mar = c(1, 1, 1, 1))
+  plot.new()
+  text(0.5, 0.8, paste("Nodos:", vcount(g)), cex = 1.2, font = 2)
+  text(0.5, 0.5, paste("Aristas:", ecount(g)), cex = 1.2, font = 2)
+  text(0.5, 0.2, paste("Densidad:", round(edge_density(g), 4)), cex = 1.2, font = 2)
+  
+  #Leyenda personalizada
+  par(mar = c(0, 1, 0, 1))
+  plot.new()
+  legend("center",
+         legend = c("marriage", "descent"),
+         col = c("#4daf4a", "#ff7f00"),  # Verde y naranja
+         lwd = 3,
+         lty = 1,
+         pch = NA,
+         bty = "n",
+         horiz = TRUE,
+         cex = 1.1,
+         text.width = max(strwidth(c("marriage", "descent"))))
+  
+  dev.off()
 }
 
-# Generar visualizaciones
-visualize_unique_structures(size_results, output_dir)
+# Graficar las 45 tipologías más frecuentes (sobre el 0.015% de los datos)
+top_tipologias <- head(tipologia_df$Tipologia, 45)
+mapply(function(tip, freq) {
+  plot_tipologia(examples[[tip]], tip, freq)
+}, top_tipologias, head(tipologia_df$Frecuencia, 45))
 
-# Mensaje final
-message("\nAnálisis completado exitosamente!")
-message("Resultados guardados en: ", normalizePath(output_dir))
-message("- Tabla de frecuencias: resumen_estructuras.csv")
-message("- Imágenes de redes: directorio Estructuras_Unicas/")
-message("- Resumen gráfico: resumen_estructuras.pdf")
-
-############ GENERAR UN SOLO PLOT POR TAMAÑO DE VIVIENDA #######################
-library(grid)
-library(gridExtra)
-create_edge_color_legend <- function(graphs) {
-  # Extraer todos los colores únicos y sus etiquetas si existen
-  all_edges <- unlist(lapply(graphs, function(g) edge_attr(g, "color")), use.names = FALSE)
-  all_types <- unlist(lapply(graphs, function(g) edge_attr(g, "type")), use.names = FALSE)
+################################################################################
+## Paso 6: Gráfico consolidado
+################################################################################
+generate_consolidated_graphs <- function(tipologia_df, examples, output_dir) {
   
-  if (is.null(all_edges)) return(NULL)
+  # Crear directorio de salida
+  img_dir <- "Análisis de viviendas/Analisis/Resultados_Tipologias/Graficos/Resumen_tamanos"
+  if (!dir.exists(img_dir)) dir.create(img_dir, recursive = TRUE)
   
-  df <- unique(data.frame(color = all_edges, label = all_types, stringsAsFactors = FALSE))
-  df <- df[!is.na(df$color), ]
+  # Configuración de colores para tipos de aristas
+  edge_type_colors <- c("marriage" = "#4daf4a",  # Verde
+                        "descent" = "#ff7f00")    # Naranja
   
-  if (nrow(df) == 0) return(NULL)
+  # Agrupar tipologías por tamaño (número de nodos)
+  tipologias_por_tamano <- split(tipologia_df, tipologia_df$Nodos)
   
-  # Crear una leyenda simple usando grobs
-  legend_items <- lapply(seq_len(nrow(df)), function(i) {
-    color_box <- rectGrob(width = unit(0.4, "cm"), height = unit(0.4, "cm"),
-                          gp = gpar(fill = df$color[i], col = "black"))
-    label <- textGrob(label = df$label[i], x = unit(0, "npc"), just = "left",
-                      gp = gpar(fontsize = 9))
-    arrangeGrob(color_box, label, ncol = 2, widths = c(0.5, 2))
-  })
-  
-  legend_grob <- arrangeGrob(grobs = legend_items, ncol = 1,
-                             top = textGrob("Leyenda de colores (relaciones)", gp = gpar(fontface = "bold")))
-  return(legend_grob)
-}
-generate_consolidated_graphs <- function(size_results, output_dir) {
-  img_dir <- file.path(output_dir, "Resumen_Tipologias")
-  if (!dir.exists(img_dir)) dir.create(img_dir)
-  
-  for (size in names(size_results)) {
-    unique_graphs <- size_results[[size]]$unique_graphs
-    freq_table <- size_results[[size]]$freq_table
+  # Procesar cada grupo de tamaño
+  for (tamano in names(tipologias_por_tamano)) {
+    tipologias <- tipologias_por_tamano[[tamano]]
     
-    plots <- lapply(seq_along(unique_graphs), function(i) {
-      g <- unique_graphs[[i]]
-      freq <- freq_table$Freq[i]
-      structure_id <- freq_table$Var1[i]
+    # Crear lista de gráficos para este tamaño
+    plots <- lapply(seq_len(nrow(tipologias)), function(i) {
+      tip <- tipologias$Tipologia[i]
+      freq <- tipologias$Frecuencia[i]
+      g <- examples[[tip]]
       
-      # Crear una imagen base
+      # Configurar estilo del grafo
+      V(g)$color <- "#6baed6"  # Azul claro para nodos
+      V(g)$size <- 15
+      V(g)$label.cex <- 0.7
+      V(g)$frame.color <- "white"
+      
+      # Configurar aristas según tipo
+      edge_types <- if("type" %in% edge_attr_names(g)) E(g)$type else rep("descent", ecount(g))
+      E(g)$color <- edge_type_colors[edge_types]
+      E(g)$width <- 1.5
+      E(g)$arrow.size <- ifelse(edge_types == "marriage", 0.5, 0.6)
+      E(g)$arrow.width <- ifelse(edge_types == "marriage", 0.5, 0.8)
+      E(g)$curved <- 0  # Sin curvatura
+      
+      # Crear gráfico con título que muestra frecuencia
       plot_file <- tempfile(fileext = ".png")
-      png(plot_file, width = 400, height = 400)
-      par(mar = rep(0.5, 4))
-      plot(g,
-           vertex.size = 15,
-           vertex.color = "lightblue",
-           vertex.label.cex = 0.8,
-           edge.width = 1.5,
-           edge.arrow.size = 0.6,
-           main = "")
+      png(plot_file, width = 300, height = 300, bg = "white")
+      par(mar = c(0.5, 0.5, 2, 0.5))
+      plot(g, main = paste("Freq:", freq))
       dev.off()
       
-      # Leer la imagen como raster
-      img <- png::readPNG(plot_file)
-      rasterGrob(img, interpolate = TRUE)
+      rasterGrob(png::readPNG(plot_file), interpolate = TRUE)
     })
     
-    labels <- lapply(seq_along(unique_graphs), function(i) {
-      freq <- freq_table$Freq[i]
-      structure_id <- freq_table$Var1[i]
-      textGrob(
-        label = paste0("Freq: ", freq),
-        gp = gpar(fontsize = 10)
+    # Crear leyenda personalizada
+    legend_grob <- if(length(edge_type_colors) > 0) {
+      legend_items <- lapply(names(edge_type_colors), function(type) {
+        color_box <- rectGrob(width = unit(0.4, "cm"), height = unit(0.4, "cm"),
+                              gp = gpar(fill = edge_type_colors[type], col = "black"))
+        label <- textGrob(
+          label = paste0(type, ifelse(type == "marriage", " (bidireccional)", " (unidireccional)")),
+          x = unit(0, "npc"), just = "left", gp = gpar(fontsize = 9))
+        arrangeGrob(color_box, label, ncol = 2, widths = c(0.5, 2))
+      })
+      
+      arrangeGrob(
+        grobs = legend_items,
+        ncol = 1,
+        top = textGrob("Tipos de Relaciones", gp = gpar(fontface = "bold", fontsize = 11))
       )
-    })
-    
-    # Combinar imagen y texto
-    combined <- mapply(function(p, l) arrangeGrob(p, l, ncol = 1, heights = c(4, 1)),
-                       plots, labels, SIMPLIFY = FALSE)
+    } else {
+      NULL
+    }
     
     # Organizar en grilla
-    ncol <- ceiling(sqrt(length(combined)))
-    grid_plot <- arrangeGrob(grobs = combined, ncol = ncol,
-                             top = textGrob(paste("Tamaño de hogar:", size, "nodos"), gp = gpar(fontface = "bold")))
-    # Generar leyenda de colores de flechas
-    legend_grob <- create_edge_color_legend(unique_graphs)
+    ncol <- ceiling(sqrt(nrow(tipologias)))
+    grid_plot <- arrangeGrob(
+      grobs = plots,
+      ncol = ncol,
+      top = textGrob(
+        paste("Tamaño de hogar:", tamano, "nodos |", 
+              "Tipologías únicas:", nrow(tipologias)),
+        gp = gpar(fontface = "bold", fontsize = 12))
+    )
     
-    if (!is.null(legend_grob)) {
-      # Agregar leyenda al final
-      final_plot <- arrangeGrob(grid_plot, legend_grob, nrow = 2, heights = c(4, 1))
+    # Combinar con leyenda
+    final_plot <- if (!is.null(legend_grob)) {
+      arrangeGrob(grid_plot, legend_grob, nrow = 2, heights = c(4, 0.5))
     } else {
-      final_plot <- grid_plot
+      grid_plot
     }
     
+    # Guardar en PDF
     ggsave(
-      filename = file.path(img_dir, paste0("Resumen_Tamano_", size, ".pdf")),
+      filename = file.path(img_dir, paste0("Resumen_Tamano_", tamano, ".pdf")),
       plot = final_plot,
-      width = 8.5, height = 11
+      width = 8.5, 
+      height = 11,
+      device = "pdf"
     )
   }
   
   message("Gráficos consolidados generados en: ", img_dir)
 }
 
+# Ejecutar la función con tus datos
+generate_consolidated_graphs(tipologia_df, examples, "Resumen_Tamanos")
 
-generate_consolidated_graphs(size_results, output_dir)
+## -----------------------------------------------------------------------------
+## Paso 7: Archivo de metadatos del análisis
+## -----------------------------------------------------------------------------
+
+metadata <- list(
+  Fecha_analisis = Sys.Date(),
+  Numero_redes = length(fingerprints),
+  Numero_tipologias = length(unique_fps),
+  Parametros = list(
+    Algoritmo_fingerprint = "canonical_permutation",
+    Version_igraph = packageVersion("igraph")
+  ),
+  Topologia_mas_comun = names(tipologia_freq)[1]
+)
+
+saveRDS(metadata, "Resultados_Tipologias/metadatos_analisis.rds")
