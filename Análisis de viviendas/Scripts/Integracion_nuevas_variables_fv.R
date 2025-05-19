@@ -30,6 +30,29 @@ library(Publish)
 load("Análisis de viviendas/Data/ori_Casen2020_rdata.RData")
 
 ##################### ADMINISTRACIÓN DE LOS DATOS ##############################
+### Revisión de la base de datos ###
+library(dplyr)
+
+hogares_por_vivienda <- ori_Casen2020_STATA %>%
+  group_by(id_vivienda) %>%
+  summarise(n_hogares = n_distinct(hogar))   # Contamos cuántos hogares hay por vivienda
+
+head(hogares_por_vivienda)
+
+#¿cuántas viviendas tienen 1,2,3 hogares ?
+resumen_hogares <- hogares_por_vivienda %>%
+  count(n_hogares, name = "n_viviendas")
+
+print(resumen_hogares) # Son 371 viviendas con 2 hogares.
+
+#¿ qué viviendas tienen más de un hogar?
+hogares_por_vivienda <- ori_Casen2020_STATA %>%
+  group_by(id_vivienda) %>%
+  summarise(n_hogares = n_distinct(hogar)) %>%
+  filter(n_hogares > 1)  # Filtrar solo las viviendas con más de un hogar
+
+head(hogares_por_vivienda)
+length(hogares_por_vivienda$id_vivienda)
 
 ### Filtrar datos utilizados ###
 ##¿Cuantas viviendas tienen un id de persona repetido? ¿CuáleS?

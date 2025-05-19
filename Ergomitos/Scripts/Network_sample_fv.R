@@ -149,7 +149,7 @@ descent_igrpah_sample
 descent_igrpah_sample[[100]]$i
 
 # Guardar los resultados en un archivo
-save(descent_igrpah_sample, file = paste0("Redes/descent_igrpah_subset1000.RData"))
+save(descent_igrpah_sample, file = paste0("Ergomitos/Redes/descent_igrpah_subset1000.RData"))
 
 #Creamos una lista en formato Network
 a <- descent_igrpah_sample
@@ -159,7 +159,7 @@ descent_network_sample <- lapply(a, function(j) {
   j
 })
 
-save(descent_network_sample, file = paste0("Redes/descent_network_subset1000.RData"))
+save(descent_network_sample, file = paste0("Ergomitos/Redes/descent_network_subset1000.RData"))
 
 ########################## RED DE MATRIMONIO ###################################
 # Establecer el número de núcleos para el procesamiento en paralelo
@@ -293,7 +293,7 @@ message("Total hogares completos: ", length(successful_graphs))
 message("Total hogares fallidos: ", length(failed_graphs))
 
 # Guardar los resultados en un archivo
-save(marriage_igraph_sample, file = paste0("Redes/marriage_igrpah_subset1000.RData"))
+save(marriage_igraph_sample, file = paste0("Ergomitos/Redes/marriage_igrpah_subset1000.RData"))
 
 #Creamos una lista en formato Network
 
@@ -305,7 +305,7 @@ marriage_network_sample <- lapply(a, function(j) {
   j
 })
 
-save(marriage_network_sample, file = paste0("Redes/marriage_network_subset1000.RData"))
+save(marriage_network_sample, file = paste0("Ergomitos/Redes/marriage_network_subset1000.RData"))
 
 
 ########################## RED DE DEPENDENCIA ##################################
@@ -401,7 +401,7 @@ message("Total hogares completos: ", length(successful_graphs))
 message("Total hogares fallidos: ", length(failed_graphs)) #2
 
 # Guardar los resultados en un archivo. Acá cambié el nombre para evitar cambiar el archivo que ya está
-save(dependency_igraph_sample, file = paste0("Redes/dependency_igraph_subset1000.RData"))
+save(dependency_igraph_sample, file = paste0("Ergomitos/Redes/dependency_igraph_subset1000.RData"))
 
 #Y ahora creamos una lista igual, pero en formato Network
 
@@ -413,7 +413,7 @@ dependency_network_sample <- lapply(a, function(j) {
   j
 })
 
-save(dependency_network_sample, file = paste0("Redes/dependency_network_subset1000.RData"))
+save(dependency_network_sample, file = paste0("Ergomitos/Redes/dependency_network_subset1000.RData"))
 
 ############################ RED KINSHIP #######################################
 num_cores <- detectCores()-1

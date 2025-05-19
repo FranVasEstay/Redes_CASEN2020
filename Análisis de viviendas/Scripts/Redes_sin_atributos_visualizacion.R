@@ -6,9 +6,10 @@ library(png)
 ################################################################################
 #######################Buscar estructuras de las redes##########################
 ################################################################################
-## Cargar de datos optimizada
+## Cargar datos de redes
+load("Análisis de viviendas/Redes/kinship_igraph_no_attrs.RData")
 
-# Función para obtener una huella estructural (fingerprint) de un grafo
+## Función para obtener una huella estructural (fingerprint) de un grafo
 graph_fingerprint <- function(graph) {
   # Copia el grafo
   g_clean <- graph
@@ -31,12 +32,12 @@ graph_fingerprint <- function(graph) {
 fingerprints <- sapply(kinship_igraph_no_attrs, function(x) {
   graph_fingerprint(x$kinship_net)
 })
-
+save(fingerprints, file = "Análisis de viviendas/Data/fingerprints.RData")
 
 # Paso 2: contar frecuencias de cada fingerprint único
 freq_table <- table(fingerprints)
 unique_fps <- names(sort(freq_table, decreasing = TRUE))
-tipologia_freq <- freq_table[unique_fps_ordered]  # Reordenamos la tabla
+tipologia_freq <- freq_table[unique_fps]  # Reordenamos la tabla
 names(tipologia_freq) <- paste0("T", seq_along(unique_fps))
 
 # Paso 3. Mostrar la tabla
@@ -156,6 +157,7 @@ expanded_df <- do.call(rbind, lapply(names(household_mapping), function(tip) {
 
 write.csv(expanded_df, "Análisis de viviendas/Analisis/Resultados_Tipologias/Reportes/households_detallados.csv", row.names = FALSE)
  ## agregar columna de frecuencia acumulada, relativa y absoluta.
+
 ################################################################################
 ## Paso 3: Visualización de tipologías
 ################################################################################
@@ -230,7 +232,7 @@ mapply(function(tip, freq) {
 }, top_tipologias, head(tipologia_df$Frecuencia, 45))
 
 ################################################################################
-## Paso 6: Gráfico consolidado
+## Paso 6: Gráfico consolidado por tamaño de vivienda
 ################################################################################
 generate_consolidated_graphs <- function(tipologia_df, examples, output_dir) {
   
@@ -333,9 +335,54 @@ generate_consolidated_graphs <- function(tipologia_df, examples, output_dir) {
 # Ejecutar la función con tus datos
 generate_consolidated_graphs(tipologia_df, examples, "Resumen_Tamanos")
 
-## -----------------------------------------------------------------------------
+################################################################################
+## Paso 6: Gráfico consolidado por frecuencia
+################################################################################
+plot_tipologia_pdf <- function(g, nombre, freq) {
+  # Preparación de atributos visuales
+  V(g)$color <- "#6baed6"
+  V(g)$size <- 25
+  V(g)$label.cex <- 1
+  V(g)$frame.color <- "white"
+  V(g)$label.color <- "black"
+  
+  edge_types <- if ("type" %in% edge_attr_names(g)) E(g)$type else rep("descent", ecount(g))
+  edge_colors <- ifelse(edge_types == "marriage", "#4daf4a", "#ff7f00")
+  E(g)$color <- edge_colors
+  E(g)$arrow.size <- ifelse(edge_types == "marriage", 0.5, 0.4)
+  E(g)$arrow.width <- ifelse(edge_types == "marriage", 0.5, 0.8)
+  E(g)$width <- 1
+  E(g)$curved <- 0
+  
+  # Título para cada subgráfico
+  plot(g, main = paste(nombre, "-", freq, "casos"), vertex.label.family = "sans", edge.label.family = "sans")
+}
+
+# Número de gráficas por página
+plots_per_page <- 20
+total_plots <- length(top_tipologias)
+pages <- ceiling(total_plots / plots_per_page)
+
+# Abrir dispositivo PDF
+pdf("Análisis de viviendas/Analisis/Resultados_Tipologias/Graficos/Tipologias_por_frecuencia.pdf", width = 11, height = 8.5)  # Formato horizontal A4
+
+for (i in seq_len(pages)) {
+  from <- (i - 1) * plots_per_page + 1
+  to <- min(i * plots_per_page, total_plots)
+  
+  par(mfrow = c(5, 4), mar = c(1, 1, 3, 1))  # 5 filas x 4 columnas
+  
+  for (j in from:to) {
+    tip <- top_tipologias[j]
+    freq <- tipologia_df$Frecuencia[tipologia_df$Tipologia == tip]
+    plot_tipologia_pdf(examples[[tip]], tip, freq)
+  }
+}
+
+dev.off()
+################################################################################
 ## Paso 7: Archivo de metadatos del análisis
-## -----------------------------------------------------------------------------
+################################################################################
 
 metadata <- list(
   Fecha_analisis = Sys.Date(),

@@ -35,10 +35,10 @@ length(unique(data_filtrada$household)) #son 62537 viviendas
 
 ##Subset 100 viviendas
 set.seed(400)  # Fijar semilla para reproducibilidad
-id_vivienda_sample <- sample(unique(data_filtrada$household), size =100,replace = F)
+id_hogar_sample <- sample(unique(data_filtrada$household), size =100,replace = F)
 # Crear subset con los 1000 id_vivienda seleccionados
 data_sample <- data_filtrada %>%
-  filter(household %in% id_vivienda_sample)
+  filter(household %in% id_hogar_sample)
 # Verificar el número de filas en el subset
 nrow(data_sample)
 length(unique(data_sample$household))

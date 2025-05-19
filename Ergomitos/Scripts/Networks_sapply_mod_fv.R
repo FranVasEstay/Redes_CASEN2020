@@ -47,9 +47,10 @@ load("Ergomitos/Data/ori_Casen2020_rdata.RData")
 # edad_dependencia_estudios - binaria: 1 (>=28 años), 2(<= 28 años)
 
 data_ergomitos<- ori_Casen2020_STATA %>%
-  select(id_vivienda, id_persona, edad, sexo,e6a,o1,r1b_pais_esp, pco1, h5, ecivil, h5_1, h5_2,nucleo, pco2, r3,s28, comuna, region,ytotcor) %>%
+  select(folio,id_vivienda,
+       id_persona, edad, sexo,e6a,o1,r1b_pais_esp, pco1, h5, ecivil, h5_1, h5_2,nucleo, pco2, r3,s28, comuna, region,ytotcor) %>%
   filter(!id_vivienda %in% c(8102104907, 6106100505, 9115300202)) %>%
-  rename(household = id_vivienda, sex = sexo) %>%
+  rename(household = folio, sex = sexo) %>%
   mutate(
     sex = factor(sex, levels = c(1, 2), labels = c("Hombre", "Mujer")),
     household = as.numeric(household),
@@ -66,7 +67,7 @@ data_ergomitos<- ori_Casen2020_STATA %>%
     .cols = -c(household, id_persona, edad, sex, pco1, h5, h5_1, pco2, comuna, region, h5_2, edad_laboral, edad_legal, edad_dependencia_estudios,ytotcor),
     .fns = ~ ifelse(is.na(.), "No_aplica", .)))
 
-length(unique(data_ergomitos$household)) # 62537
+length(unique(data_ergomitos$household)) # 62537 con id_vivienda y filtro, 62911 con folio
 save(data_ergomitos, file = "Ergomitos/Data/Data_Ergomitos.RData")
 
 ########################### CREACION DE REDES ##################################
@@ -569,5 +570,3 @@ kinship_network<- lapply(a, function(j) {
 })
 save(kinship_network, file = paste0(getwd(), "/Ergomitos/Redes/kinship_network.RData"))
 beep(8)
-
-
