@@ -54,20 +54,35 @@ data_ergomitos<- ori_Casen2020_STATA %>%
   mutate(
     sex = factor(sex, levels = c(1, 2), labels = c("Hombre", "Mujer")),
     household = as.numeric(household),
-    across(c(e6a,pco1, ecivil, pco2, r3,o1, region, comuna), as_factor),
-    r1b_pais_esp = ifelse(r1b_pais_esp == "", 1,
-                          ifelse(r1b_pais_esp == "NO RESPONDE", 3, 2)),
+    across(c(e6a,pco1,pco2, r3,o1, region, comuna), as_factor),
+    #ecivil = case_when(
+    #  as.numeric(ecivil) %in% 1:3 ~ 1,
+    #  as.numeric(ecivil) %in% 4:8 ~ 2,
+    #  TRUE ~ NA
+    #) %>% factor(ecivil,levels = c(1, 2), labels = c("En pareja", "Sin pareja")),
+    r3 = case_when(
+      as.numeric(r3) %in% 1:10 ~ 1,
+      TRUE ~ 2
+    ) %>% factor(levels = c(1, 2), labels = c("Pertenece", "No pertenece")),
+    r1b_pais_esp = case_when(
+      r1b_pais_esp == "" ~ 1,
+      r1b_pais_esp == "NO RESPONDE" ~ NA,
+      TRUE ~ 2
+    ) %>% factor(levels = c(1, 2), labels = c("Chileno", "Extranjero")),
+    s28 = case_when(
+      as.numeric(s28) %in% c(2, 22) ~ 1,
+      as.numeric(s28) == 99 ~ NA,
+      TRUE ~ 2
+    ) %>% factor(levels = c(1, 2), labels = c("Sin enfermedad crónica", "Enfermedad crónica")),
     # Nuevas variables de edad
     edad_laboral = ifelse(edad >= 15, 1, 0),          # 15+ años
     edad_legal = ifelse(edad >= 18, 1, 0),            # 18+ años
     edad_dependencia_estudios = ifelse(edad >= 28, 1, 0),  # 28+ años
   ) %>%
   # Reemplazar NA por "No_aplica" solo en variables específicas
-  mutate(across(
-    .cols = -c(household, id_persona, edad, sex, pco1, h5, h5_1, pco2, comuna, region, h5_2, edad_laboral, edad_legal, edad_dependencia_estudios,ytotcor),
-    .fns = ~ ifelse(is.na(.), "No_aplica", .)))
-
-length(unique(data_ergomitos$household)) # 62537 con id_vivienda y filtro, 62911 con folio
+  mutate(o1 = ifelse(is.na(o1), "No_aplica", as.character(o1))) %>%
+           mutate(o1 = as_factor(o1))
+length(unique(data_ergomitos$household)) # 62537 con id_vivienda y filtro, 62907 con folio
 save(data_ergomitos, file = "Ergomitos/Data/Data_Ergomitos.RData")
 
 ########################### CREACION DE REDES ##################################
