@@ -2,7 +2,7 @@ library(igraph)
 library(grid)
 library(gridExtra)
 library(png)
-
+library(dplyr)
 ################################################################################
 #######################Buscar estructuras de las redes##########################
 ################################################################################
@@ -395,4 +395,4 @@ metadata <- list(
   Topologia_mas_comun = names(tipologia_freq)[1]
 )
 
-saveRDS(metadata, "Resultados_Tipologias/metadatos_analisis.rds")
+saveRDS(metadata, "Análisis de viviendas/Analisis/Resultados_Tipologias/metadatos_analisis.rds")
