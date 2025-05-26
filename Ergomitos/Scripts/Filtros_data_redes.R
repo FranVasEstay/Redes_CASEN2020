@@ -708,7 +708,7 @@ View(data_filtrada)
 View(filter(ori_Casen2020_STATA,folio==110110010301))
 
 #por número
-plot(descent_igrpah_filtred[3][[1]]$descent_net)
-plot(marriage_igraph_filtred[3][[1]]$marriage_net)
-plot(dependency_igraph_filtred[3][[1]]$dependency_net)
-plot(kinship_igrpah_filtred[3][[1]]$kinship_net)
+plot(descent_igrpah_filtred[300][[1]]$descent_net)
+plot(marriage_igraph_filtred[300][[1]]$marriage_net)
+plot(dependency_igraph_filtred[300][[1]]$dependency_net)
+plot(kinship_igrpah_filtred[300][[1]]$kinship_net)
