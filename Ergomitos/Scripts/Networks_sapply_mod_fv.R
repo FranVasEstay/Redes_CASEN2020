@@ -45,6 +45,7 @@ load("Ergomitos/Data/ori_Casen2020_rdata.RData")
 # edad_laboral - binaria: 1 (>=15 años), 2(<= 15 años)
 # edad_legal - binaria: 1 (>=18 años), 2(<= 18 años)
 # edad_dependencia_estudios - binaria: 1 (>=28 años), 2(<= 28 años)
+# pco1: parentesco con el jefe de hogar: 1 (Jefe de hogar)
 
 data_ergomitos<- ori_Casen2020_STATA %>%
   select(folio,id_vivienda,
@@ -505,7 +506,7 @@ household_process <- function(i, data_ergomitos) {
   
   
   names(household_i)
-  myvars <- c("id_persona", "sex", "edad","ecivil","e6a","o1","r1b_pais_esp","r3","s28", "region", "comuna","ytotcor","edad_laboral","edad_legal","edad_dependencia_estudios")
+  myvars <- c("id_persona", "sex", "edad","ecivil","e6a","o1","r1b_pais_esp","r3","s28", "region", "comuna","ytotcor","edad_laboral","edad_legal","edad_dependencia_estudios","pco1")
   covariates <- household_i[myvars]
   
   nodes <- sort(covariates$id_persona)
@@ -528,6 +529,7 @@ household_process <- function(i, data_ergomitos) {
   V(kinship_net)$edad_laboral <- as.numeric(covariates$edad_laboral)
   V(kinship_net)$edad_legal <- as.numeric(covariates$edad_legal)
   V(kinship_net)$edad_dependencia_estudios <- as.numeric(covariates$edad_dependencia_estudios)
+  V(kinship_net)$pco1 <- as.numeric(covariates$pco1)
   grafo <- list(household_i = i, kinship_net = kinship_net)
   return(grafo)
 }

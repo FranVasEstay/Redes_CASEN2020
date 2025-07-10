@@ -1,11 +1,18 @@
+################################################################################
+#######################Buscar estructuras de las redes##########################
+################################################################################
+#Este script crea tipologías de las redes creadas a partir de la encuesta CASEN#
+#Para crear estas tipologías primeramente quitamos los atributos de las redes kinship creadas anteriormente con el fin de ver únicamente su estructura y luego calcular la frecuencia de esa estructura en la lista de redes kinship#
+
+#Liberías
+library(BAMMtools)
 library(igraph)
+library(ggplot2)
 library(grid)
 library(gridExtra)
 library(png)
 library(dplyr)
-################################################################################
-#######################Buscar estructuras de las redes##########################
-################################################################################
+
 ## Cargar datos de redes
 load("Análisis de viviendas/Redes/kinship_igraph_no_attrs.RData")
 
@@ -33,6 +40,7 @@ fingerprints <- sapply(kinship_igraph_no_attrs, function(x) {
   graph_fingerprint(x$kinship_net)
 })
 save(fingerprints, file = "Análisis de viviendas/Data/fingerprints.RData")
+load("Análisis de viviendas/Data/fingerprints.RData")
 
 # Paso 2: contar frecuencias de cada fingerprint único
 freq_table <- table(fingerprints)
@@ -159,10 +167,91 @@ write.csv(expanded_df, "Análisis de viviendas/Analisis/Resultados_Tipologias/Re
  ## agregar columna de frecuencia acumulada, relativa y absoluta.
 
 ################################################################################
-## Paso 3: Visualización de tipologías
+## Paso 3: Determinar punto de corte de tipologías
 ################################################################################
+tipologia_df <- read.csv("Análisis de viviendas/Analisis/Resultados_Tipologias/Reportes/resumen_tipologias.csv", header = T, sep=,)
 
-# Función mejorada para graficar tipologías
+## Jenks Breaks ################################################################
+plotJenks <- function(data, nbreaks=3, brks.cex=0.70, top.margin=10, dist=5){ 
+  df <- data.frame(sorted.values=sort(data, decreasing=TRUE))
+  Jclassif <- classIntervals(df$sorted.values, nbreaks, style = "jenks") #requires the 'classInt' package
+  test <- jenks.tests(Jclassif) #requires the 'classInt' package
+  df$class <- cut(df$sorted.values, unique(Jclassif$brks), labels=FALSE, include.lowest=TRUE) #the function unique() is used to remove non-unique breaks, should the latter be produced. This is done because the cut() function cannot break the values into classes if non-unique breaks are provided
+  if(length(Jclassif$brks)!=length(unique(Jclassif$brks))){
+    info <- ("The method has produced non-unique breaks, which have been removed. Please, check '...$classif$brks'")
+  } else {info <- ("The method did not produce non-unique breaks.")}
+  loop.res <- numeric(nrow(df))
+  i <- 1
+  repeat{
+    i <- i+1
+    loop.class <- classIntervals(df$sorted.values, i, style = "jenks")
+    loop.test <- jenks.tests(loop.class)
+    loop.res[i] <- loop.test[[2]]
+    if(loop.res[i]>0.9999){
+      break
+    }
+  }
+  max.GoF.brks <- which.max(loop.res)
+  plot(x=df$sorted.values, y=c(1:nrow(df)), type="b", main=paste0("Jenks natural breaks optimization; number of breaks: ", nbreaks), sub=paste0("Goodness of Fit: ", round(test[[2]],4), ". Max GoF (", round(max(loop.res),4), ") with breaks:", max.GoF.brks), ylim =c(0, nrow(df)+top.margin), cex=0.75, cex.main=0.95, cex.sub=0.7, ylab="observation index", xlab="value (increasing order)")
+  abline(v=Jclassif$brks, lty=3, col="red")
+  text(x=Jclassif$brks, y= max(nrow(df)) + dist, labels=sort(round(Jclassif$brks, 2)), cex=brks.cex, srt=90)
+  results <- list("info"=info, "classif" = Jclassif, "breaks.max.GoF"=max.GoF.brks, "class.data" = df)
+  return(results)
+}
+library(classInt)
+plotJenks(tipologia_df$Frecuencia, nbreaks = 2) # Salen solo las 6 primeras tipologías.
+#'plotJenks': R function for plotting univariate classification using Jenks' natural break method
+#September 2017
+#DOI: 10.13140/RG.2.2.18011.05929
+#Languages: RRepository: http://cainarchaeology.weebly.com/r-function-for-plotting-jenks-natural-breaks-classification.html
+
+library(strucchange)
+bp <- breakpoints(Frecuencia ~ 1, data = tipologia_df, h = 0.05)  # h = tamaño mínimo del segmento (5% de datos)
+summary(bp)  # Muestra ubicación de los quiebres
+plot(bp)     # Gráfico con los breakpoints
+# Obtener la posición del breakpoint
+bp_opt <- breakpoints(Frecuencia ~ 1, data = tipologia_df, h = 0.05)
+summary(bp_opt)$breakpoints  # Devuelve la posición
+plot(tipologia_df$Frecuencia, type = "o", pch = 19, main = "Breakpoints en Frecuencias")
+abline(v = bp_opt$breakpoints, col = "red", lty = 2)  # Línea vertical en el quiebre
+muestra_tipologias<- tipologia_df
+muestra_tipologias$break_group <- ifelse(
+  seq_along(muestra_tipologias$Frecuencia) <= bp_opt$breakpoints,
+  "Grupo Alto",
+  "Grupo Bajo"
+)
+break_pos <- bp$breakpoints  # Posición del mejor breakpoint
+break_pos # dejan las tipologías hasta el 48
+View(muestra_tipologias) 
+
+#breaks <- getJenksBreaks(tipologia_df$Frecuencia,5)
+#print(breaks)  
+
+# Obtener breakpoints
+break_pos <- bp$breakpoints  # Posición del mejor breakpoint
+ggplot(muestra_tipologias, aes(x = seq_along(Frecuencia), y = Frecuencia)) +
+  geom_line(color = "blue") +
+  geom_point(color = "red") +
+  geom_vline(xintercept = break_pos, linetype = "dashed", color = "black") +
+  annotate("text", x = break_pos, y = max(muestra_tipologias$Frecuencia), 
+           label = paste("Breakpoint:", break_pos), vjust = -1) +
+  labs(
+    title = "Puntos de Quiebre en Frecuencias",
+    x = "Orden de Tipologías (por frecuencia)",
+    y = "Frecuencia"
+  ) +
+  theme_minimal()
+
+#Filtrar data por breakpoint del "Grupo Alto"
+muestra_tipologias <-muestra_tipologias %>% dplyr::filter(break_group == "Grupo Alto")
+#Guardar data de tipologias
+write.table(muestra_tipologias, file = "Análisis de viviendas/Data/muestra_tipologias.csv",
+            sep = "\t", row.names = F)
+
+################################################################################
+## Paso 4: Visualización de tipologías
+################################################################################
+# Función para graficar tipologías
 plot_tipologia <- function(g, nombre, freq) {
   # Configuración visual consistente
   V(g)$color <- "#6baed6"
@@ -225,14 +314,16 @@ plot_tipologia <- function(g, nombre, freq) {
   dev.off()
 }
 
-# Graficar las 45 tipologías más frecuentes (sobre el 0.015% de los datos)
-top_tipologias <- head(tipologia_df$Tipologia, 45)
+# Graficar las 48 tipologías más frecuentes
 mapply(function(tip, freq) {
   plot_tipologia(examples[[tip]], tip, freq)
-}, top_tipologias, head(tipologia_df$Frecuencia, 45))
+}, 
+muestra_tipologias$Tipologia,  # Nombres de las tipologías
+muestra_tipologias$Frecuencia,         # Frecuencias
+SIMPLIFY = FALSE)           # Para evitar simplificación a vector
 
 ################################################################################
-## Paso 6: Gráfico consolidado por tamaño de vivienda
+## Paso 5: Gráfico consolidado por tamaño de vivienda
 ################################################################################
 generate_consolidated_graphs <- function(tipologia_df, examples, output_dir) {
   
@@ -360,7 +451,7 @@ plot_tipologia_pdf <- function(g, nombre, freq) {
 
 # Número de gráficas por página
 plots_per_page <- 20
-total_plots <- length(top_tipologias)
+total_plots <- length(muestra_tipologias$Tipologia)
 pages <- ceiling(total_plots / plots_per_page)
 
 # Abrir dispositivo PDF
@@ -373,26 +464,10 @@ for (i in seq_len(pages)) {
   par(mfrow = c(5, 4), mar = c(1, 1, 3, 1))  # 5 filas x 4 columnas
   
   for (j in from:to) {
-    tip <- top_tipologias[j]
-    freq <- tipologia_df$Frecuencia[tipologia_df$Tipologia == tip]
+    tip <- muestra_tipologias$Tipologia[j]
+    freq <- muestra_tipologias$Frecuencia[muestra_tipologias$Tipologia == tip]
     plot_tipologia_pdf(examples[[tip]], tip, freq)
   }
 }
 
 dev.off()
-################################################################################
-## Paso 7: Archivo de metadatos del análisis
-################################################################################
-
-metadata <- list(
-  Fecha_analisis = Sys.Date(),
-  Numero_redes = length(fingerprints),
-  Numero_tipologias = length(unique_fps),
-  Parametros = list(
-    Algoritmo_fingerprint = "canonical_permutation",
-    Version_igraph = packageVersion("igraph")
-  ),
-  Topologia_mas_comun = names(tipologia_freq)[1]
-)
-
-saveRDS(metadata, "Análisis de viviendas/Analisis/Resultados_Tipologias/metadatos_analisis.rds")
