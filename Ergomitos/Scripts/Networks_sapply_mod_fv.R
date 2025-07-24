@@ -45,28 +45,45 @@ load("Ergomitos/Data/ori_Casen2020_rdata.RData")
 # edad_laboral - binaria: 1 (>=15 años), 2(<= 15 años)
 # edad_legal - binaria: 1 (>=18 años), 2(<= 18 años)
 # edad_dependencia_estudios - binaria: 1 (>=28 años), 2(<= 28 años)
+# pco1: parentesco con el jefe de hogar: 1 (Jefe de hogar)
 
 data_ergomitos<- ori_Casen2020_STATA %>%
-  select(id_vivienda, id_persona, edad, sexo,e6a,o1,r1b_pais_esp, pco1, h5, ecivil, h5_1, h5_2,nucleo, pco2, r3,s28, comuna, region,ytotcor) %>%
+  select(folio,id_vivienda,
+       id_persona, edad, sexo,e6a,o1,r1b_pais_esp, pco1, h5, ecivil, h5_1, h5_2,nucleo, pco2, r3,s28, comuna, region,ytotcor) %>%
   filter(!id_vivienda %in% c(8102104907, 6106100505, 9115300202)) %>%
-  rename(household = id_vivienda, sex = sexo) %>%
+  rename(household = folio, sex = sexo) %>%
   mutate(
     sex = factor(sex, levels = c(1, 2), labels = c("Hombre", "Mujer")),
     household = as.numeric(household),
-    across(c(e6a,pco1, ecivil, pco2, r3,o1, region, comuna), as_factor),
-    r1b_pais_esp = ifelse(r1b_pais_esp == "", 1,
-                          ifelse(r1b_pais_esp == "NO RESPONDE", 3, 2)),
+    across(c(e6a,pco1,pco2, r3,o1, region, comuna), as_factor),
+    #ecivil = case_when(
+    #  as.numeric(ecivil) %in% 1:3 ~ 1,
+    #  as.numeric(ecivil) %in% 4:8 ~ 2,
+    #  TRUE ~ NA
+    #) %>% factor(ecivil,levels = c(1, 2), labels = c("En pareja", "Sin pareja")),
+    r3 = case_when(
+      as.numeric(r3) %in% 1:10 ~ 1,
+      TRUE ~ 2
+    ) %>% factor(levels = c(1, 2), labels = c("Pertenece", "No pertenece")),
+    r1b_pais_esp = case_when(
+      r1b_pais_esp == "" ~ 1,
+      r1b_pais_esp == "NO RESPONDE" ~ NA,
+      TRUE ~ 2
+    ) %>% factor(levels = c(1, 2), labels = c("Chileno", "Extranjero")),
+    s28 = case_when(
+      as.numeric(s28) %in% c(2, 22) ~ 1,
+      as.numeric(s28) == 99 ~ NA,
+      TRUE ~ 2
+    ) %>% factor(levels = c(1, 2), labels = c("Sin enfermedad crónica", "Enfermedad crónica")),
     # Nuevas variables de edad
     edad_laboral = ifelse(edad >= 15, 1, 0),          # 15+ años
     edad_legal = ifelse(edad >= 18, 1, 0),            # 18+ años
     edad_dependencia_estudios = ifelse(edad >= 28, 1, 0),  # 28+ años
   ) %>%
   # Reemplazar NA por "No_aplica" solo en variables específicas
-  mutate(across(
-    .cols = -c(household, id_persona, edad, sex, pco1, h5, h5_1, pco2, comuna, region, h5_2, edad_laboral, edad_legal, edad_dependencia_estudios,ytotcor),
-    .fns = ~ ifelse(is.na(.), "No_aplica", .)))
-
-length(unique(data_ergomitos$household)) # 62537
+  mutate(o1 = ifelse(is.na(o1), "No_aplica", as.character(o1))) %>%
+           mutate(o1 = as_factor(o1))
+length(unique(data_ergomitos$household)) # 62537 con id_vivienda y filtro, 62907 con folio
 save(data_ergomitos, file = "Ergomitos/Data/Data_Ergomitos.RData")
 
 ########################### CREACION DE REDES ##################################
@@ -489,7 +506,7 @@ household_process <- function(i, data_ergomitos) {
   
   
   names(household_i)
-  myvars <- c("id_persona", "sex", "edad","ecivil","e6a","o1","r1b_pais_esp","r3","s28", "region", "comuna","ytotcor","edad_laboral","edad_legal","edad_dependencia_estudios")
+  myvars <- c("id_persona", "sex", "edad","ecivil","e6a","o1","r1b_pais_esp","r3","s28", "region", "comuna","ytotcor","edad_laboral","edad_legal","edad_dependencia_estudios","pco1")
   covariates <- household_i[myvars]
   
   nodes <- sort(covariates$id_persona)
@@ -512,6 +529,7 @@ household_process <- function(i, data_ergomitos) {
   V(kinship_net)$edad_laboral <- as.numeric(covariates$edad_laboral)
   V(kinship_net)$edad_legal <- as.numeric(covariates$edad_legal)
   V(kinship_net)$edad_dependencia_estudios <- as.numeric(covariates$edad_dependencia_estudios)
+  V(kinship_net)$pco1 <- as.numeric(covariates$pco1)
   grafo <- list(household_i = i, kinship_net = kinship_net)
   return(grafo)
 }
@@ -569,5 +587,3 @@ kinship_network<- lapply(a, function(j) {
 })
 save(kinship_network, file = paste0(getwd(), "/Ergomitos/Redes/kinship_network.RData"))
 beep(8)
-
-

@@ -24,7 +24,7 @@ library(doSNOW)
 library(progress)
 library(sjmisc)
 
-######################## CREAR FINGERPRINT DE CADA RED #########################
+######################## QUITAR ATRIBUTOS DE CADA RED ##########################
 ## Primero procesar los edges y luego quitar atributos.
 load("Ergomitos/Redes/kinship_igrpah.RData") #Cargar red de Kinship
 ## Filtrar y procesar redes con más de un nodo

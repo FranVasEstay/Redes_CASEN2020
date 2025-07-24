@@ -1,4 +1,4 @@
-x <- 3202102202 #ingresamos el household_id de una vivienda en la que estamos interesados
+x <-110110010301 #ingresamos el household_id de una vivienda en la que estamos interesados
 
 #Funcion para buscar ese household en una lista de redes. Data es la lista de redes y x es el household
 buscar <- function(x, data) {
@@ -17,7 +17,7 @@ buscar(x, kinship_igrpah)
 #Vemos algunas redes para revisarlas aquí: 
 View(filter(data_ergomitos,household==3202102202))
 
-kinship_igrpah[[62]]
+kinship_igrpah[[207]]
 plot(dependency_igraph[159][[1]]$dependency_net)
 plot(kinship_igrpah[159][[1]]$kinship_net)
 
@@ -27,5 +27,5 @@ plot(dependency_igraph[159][[1]]$dependency_net)
 plot(dependency_igraph_no_attrs[159][[1]]$dependency_net)
 plot(marriage_igraph[159][[1]]$marriage_net)
 plot(marriage_igraph_no_attrs[159][[1]]$marriage_net)
-plot(kinship_igrpah[44][[1]]$kinship_net)
-plot(kinship_igraph_no_attrs[44][[1]]$kinship_net)
+plot(kinship_igrpah[61910][[1]]$kinship_net)
+plot(kinship_igraph_no_attrs[207][[1]]$kinship_net)

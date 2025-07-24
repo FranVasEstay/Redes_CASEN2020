@@ -30,6 +30,29 @@ library(Publish)
 load("Análisis de viviendas/Data/ori_Casen2020_rdata.RData")
 
 ##################### ADMINISTRACIÓN DE LOS DATOS ##############################
+### Revisión de la base de datos ###
+library(dplyr)
+
+hogares_por_vivienda <- ori_Casen2020_STATA %>%
+  group_by(id_vivienda) %>%
+  summarise(n_hogares = n_distinct(hogar))   # Contamos cuántos hogares hay por vivienda
+
+head(hogares_por_vivienda)
+
+#¿cuántas viviendas tienen 1,2,3 hogares ?
+resumen_hogares <- hogares_por_vivienda %>%
+  count(n_hogares, name = "n_viviendas")
+
+print(resumen_hogares) # Son 371 viviendas con 2 hogares.
+
+#¿ qué viviendas tienen más de un hogar?
+hogares_por_vivienda <- ori_Casen2020_STATA %>%
+  group_by(id_vivienda) %>%
+  summarise(n_hogares = n_distinct(hogar)) %>%
+  filter(n_hogares > 1)  # Filtrar solo las viviendas con más de un hogar
+
+head(hogares_por_vivienda)
+length(hogares_por_vivienda$id_vivienda)
 
 ### Filtrar datos utilizados ###
 ##¿Cuantas viviendas tienen un id de persona repetido? ¿CuáleS?
@@ -40,21 +63,57 @@ cat("Número de viviendas con id de persona repetido:", sum(duplicated(a)), "\n"
 cat("id_vivienda_repetida id_persona_repetida\n")
 print(a[which(duplicated(a))])
 
-data<-  ori_Casen2020_STATA %>%
-  select(id_vivienda, id_persona, edad, sexo,e6a,o1,r1b_pais_esp, pco1, h5, ecivil, h5_1, h5_2, r1b_pais_esp,nucleo, pco2, r3,s28,y1,y1_preg, comuna, region) %>%
+## Variables en la data ###
+# edad - edad numérico
+# sexo - sexo binario levels: 1(Hombre), 2(Mujer)
+# e6a  - nivel educativo: "¿Cuál es el nivel más alto alcanzado o el nivel educacional actual?", 17 labels de 1 "Nunca asistío" hasya 17 "Posgrado"
+# o1   - ¿trabajó la semana pasada? binario: 1(si), 2(no)
+# r1b_pais_esp - nacionalidad levels: 1(chileno), 2(extranjero), 3(no responde) 
+# ecivil - estado civil levels: 1 "Casado(a)" hasta 9 "No sabe\\No responde"
+# r3   - pueblo indígena levels:1-10 distintos pueblos indígenas, 11 - no pertenece a un pueblo indígena
+# s28  - ha estado en tratamiento médico (12 meses) levels: 1(si), 2(no), 3(No sabe/No recuerda)
+# comuna - comuna 
+# region - región 
+# ytotcor - Ingreso total del hogar numérico en pesos (CLP) 
+# edad_laboral - binaria: 1 (>=15 años), 2(<= 15 años)
+# edad_legal - binaria: 1 (>=18 años), 2(<= 18 años)
+# edad_dependencia_estudios - binaria: 1 (>=28 años), 2(<= 28 años)
+
+data_analisis<- ori_Casen2020_STATA %>%
+  select(folio,id_vivienda,
+         id_persona, edad, sexo,e6a,o1,r1b_pais_esp, pco1, h5, ecivil, h5_1, h5_2,nucleo, pco2, r3,s28, comuna, region,ytotcor) %>%
   filter(!id_vivienda %in% c(8102104907, 6106100505, 9115300202)) %>%
-  rename(household = id_vivienda, sex = sexo) %>%
+  rename(household = folio, sex = sexo) %>%
   mutate(
     sex = factor(sex, levels = c(1, 2), labels = c("Hombre", "Mujer")),
     household = as.numeric(household),
-    r1b_pais_esp = case_when(r1b_pais_esp == "" ~ 1,r1b_pais_esp %in% c("NO RESPONDE", "NO BIEN ESPECIFICADO")~ 0,TRUE ~ 2),
-    r3 = ifelse(as.numeric(r3) >= 1 & as.numeric(r3) <= 10, 1, # Sí (1-10)
-                ifelse(as.numeric(r3) == 11, 2, 0)), # No (11)
-    s28 = case_when(s28 %in% 1:21 ~ "Si",s28 %in% c(22, 99) ~ "No",TRUE ~ as.character(s28)),
-    across(c(e6a,pco1, ecivil, pco2, r3,o1, y1_preg,s28,r1b_pais_esp), as_factor)
+    across(c(e6a,pco1,pco2, r3,o1, region, comuna), as_factor),
+    #ecivil = case_when(
+    #  as.numeric(ecivil) %in% 1:3 ~ 1,
+    #  as.numeric(ecivil) %in% 4:8 ~ 2,
+    #  TRUE ~ NA
+    #) %>% factor(ecivil,levels = c(1, 2), labels = c("En pareja", "Sin pareja")),
+    r3 = case_when(
+      as.numeric(r3) %in% 1:10 ~ 1,
+      TRUE ~ 2
+    ) %>% factor(levels = c(1, 2), labels = c("Pertenece", "No pertenece")),
+    r1b_pais_esp = case_when(
+      r1b_pais_esp == "" ~ 1,
+      r1b_pais_esp == "NO RESPONDE" ~ NA,
+      TRUE ~ 2
+    ) %>% factor(levels = c(1, 2), labels = c("Chileno", "Extranjero")),
+    s28 = case_when(
+      as.numeric(s28) %in% c(2, 22) ~ 1,
+      as.numeric(s28) == 99 ~ NA,
+      TRUE ~ 2
+    ) %>% factor(levels = c(1, 2), labels = c("Sin enfermedad crónica", "Enfermedad crónica")),
+    # Nuevas variables de edad
+    edad_laboral = ifelse(edad >= 15, 1, 0),          # 15+ años
+    edad_legal = ifelse(edad >= 18, 1, 0),            # 18+ años
+    edad_dependencia_estudios = ifelse(edad >= 28, 1, 0),  # 28+ años
   )
-save(data, file = "Análisis de viviendas/Data/Data.RData")
-save(data, file = "Ergomitos/Data/Data.RData")
+length(unique(data_analisis$household)) # 62537 con id_vivienda y filtro, 62907 con folio
+save(data_analisis, file = "Análisis de viviendas/Data/Data_analisis.RData")
 
  ##¿Cuantas viviendas tienen un id de persona repetido? ¿CuáleS?
 a <- paste(data$household, data$id_persona)
@@ -89,13 +148,9 @@ data_subset <- data %>%
 nrow(data_subset)
 
 save(data_subset, file = "Análisis de viviendas/Data/Data_subset.RData")
-save(data_subset, file = "Ergomitos/Data/Data_subset.RData")
-
 
 load("Análisis de viviendas/Data/Data_subset.RData")
-
 load("Análisis de viviendas/Data/Data.RData")
-
 
 ######################### CALCULO DE ESTADISTICOS ##############################
 ### Crear listas y data frame vacios para recopilar información 
@@ -107,88 +162,80 @@ registerDoParallel(cl)
 #Error handling
 options("tryCatchLog.write.error.dump.file" = TRUE)
 
-for (i in unique(data$household)) {
+for (i in unique(data_analisis$household)) {
   tryCatch({
     # Filtrar la vivienda actual
-    vivienda_i <- data[data$household == i, ]
+    vivienda_i <- data_analisis[data_analisis$household == i, ]
+    # Variables básicas
+    n_miembros <- nrow(vivienda_i)
     
-    # Contar hombres y mujeres
-    n.hombres <- sum(vivienda_i$sex == "Hombre", na.rm = TRUE)
-    n.mujeres <- sum(vivienda_i$sex == "Mujer", na.rm = TRUE)
-    porc.hombre <- (n.hombres / (n.hombres + n.mujeres)) * 100
-    porc.hombre[is.nan(porc.hombre)] <-0
+    # Contar hombres y mujeres 
+    n_hombres <- sum(vivienda_i$sex == "Hombre", na.rm = TRUE)
+    porc_hombre <- ifelse(n_miembros > 0, (n_hombres/n_miembros)*100, 0)
     
     # Media y desviación estándar de la edad
     edad.prom <- mean(vivienda_i$edad, na.rm = TRUE)
     edad.sd <- sd(vivienda_i$edad, na.rm = TRUE)
     
-    # Contar indígenas
-    n.ind <- sum(vivienda_i$r3 == 1, na.rm = TRUE)
-    n.noind <- sum(vivienda_i$r3 == 2, na.rm = TRUE)
-    porc.ind <- (n.ind / (n.ind + n.noind)) * 100
-    porc.ind[is.nan(porc.ind)] <-0
+    # Contar indígenas 
+    n_indigena <- sum(vivienda_i$r3 == "Pertenece", na.rm = TRUE)
+    porc_ind <- ifelse(n_miembros > 0, (n_indigena/n_miembros)*100, 0)
 
     # Obtener región y comuna
-    region <- unique(vivienda_i$region)
-    comuna <- unique(vivienda_i$comuna)
+    region <- as.character(unique(vivienda_i$region))[1]  # Tomar el primer valor si hay múltiples
+    comuna <- as.character(unique(vivienda_i$comuna))[1]
+
+    # Cálculo del empleo (sale mal)
+    n_empleo <- sum(vivienda_i$o1 == "Sí", na.rm = TRUE)
+    total_empleo <- sum(!is.na(vivienda_i$o1))
+    porc_empleo <- ifelse(total_empleo > 0, (n_empleo/total_empleo)*100, 0)
     
-    # Cálculo del empleo
-    n.siW <-  sum(vivienda_i$o1 == "Sí", na.rm = TRUE)
-    porc.empleo <- (n.siW / sum(!is.na(vivienda_i$o1)))* 100
+    # Condición de salud
+    n_enfermo <- sum(vivienda_i$s28 == "Enfermedad crónica", na.rm = TRUE)
+    total_salud <- sum(!is.na(vivienda_i$s28))
+    porc_enf <- ifelse(total_salud > 0, (n_enfermo/total_salud)*100, 0)
     
-    # Atención de salud
-    saludtab <- vivienda_i %>% count(s17, .drop = FALSE)
-    n.saludsi <- sum(saludtab$n[saludtab$s17 %in% levels(data$s17)[1]], na.rm = TRUE)
-    total_personas_sal <- sum(saludtab$n, na.rm = TRUE)
-    porc.salud <- ifelse(total_personas_sal == 0, 0, (n.saludsi / total_personas_sal) * 100)
+    # Nacionalidad (sale mal)
+    n_chileno <- sum(vivienda_i$r1b_pais_esp == "Chileno", na.rm = TRUE)
+    total_nac <- sum(!is.na(vivienda_i$r1b_pais_esp))
+    porc_chi <- ifelse(total_nac > 0, (n_chileno/total_nac)*100, 0)
     
-    # Condición de salud ### FALTA ESTO
-    #enftab <- vivienda_i %>% count(s28, .drop = FALSE)
-    #n.enf <- sum(enftab$n[enftab$s28 %in% levels(data$s28)[1:21]], na.rm = TRUE)
-    #total_personas_s <- sum(enftab$n, na.rm = TRUE)
-    #porc.enf <- ifelse(total_personas == 0, 0, (n.enf / total_personas_s) * 100)
-    
-    # Nacionalidad
-    n.chi <- sum(vivienda_i$r1b_pais_esp == 1, na.rm = TRUE)
-    total_personas_chi <- sum(vivienda_i$r1b_pais_esp)
-    porc.chi <- ifelse(total_personas_chi == 0, 0, (n.chi / total_personas_chi) * 100)
-    
-    # Salario líquido
-    n.siS <- sum(vivienda_i$y1_preg == "Sí", na.rm = TRUE)
-    total_personas_sala <- sum(!is.na(vivienda_i$y1_preg))
-    porc.sal <- ifelse(total_personas_sala == 0, 0, (n.siS / total_personas_sala) * 100)
-    
-    #Quintil
-    #prom_sueldo <- mean(vivienda_i$y1, na.rm = TRUE)
-    #quintil_sueldo <- ntile(prom_sueldo, 5)
-    prom_sueldo <- mean(vivienda_i$y1, na.rm = TRUE)
-    if (!is.na(prom_sueldo)) {
-      quintil_sueldo <- ntile(c(prom_sueldo), 5)
-    } else {
-      quintil_sueldo <- NA
-    }
+    #Sueldo vivienda
+    sueldo <- mean(vivienda_i$ytotcor)
     
     # Crear tabla de resultados
-    table_households <- tibble(i, porc.hombre, porc.ind, porc.empleo, porc.salud,porc.enf, porc.chi, porc.sal,quintil_sueldo, edad.prom, edad.sd, region, comuna)
+    table_households <- tibble(
+      household = i, 
+      porc_hombre, 
+      porc_ind, 
+      porc_empleo, 
+      porc_enf, 
+      porc_chi,
+      sueldo, 
+      edad.prom, 
+      edad.sd, 
+      region, 
+      comuna
+    )
+    
     measurements <- rbind(measurements, table_households)
-    measurements <- distinct(measurements)
-
+    
   }, error = function(e) {
-    message(paste("Error en id_vivienda:", i, ":", e$message))
+    message(paste("Error en household:", i, ":", e$message))
   })
 }
 
-# Unir todos los resultados en un solo dataframe
-measurements <- bind_rows(measurements)
+# Eliminar duplicados
+measurements <- distinct(measurements)
+
 stopCluster(cl)
 head(measurements)
-beep(1)
+
 # Guardar resultados
-if (!dir.exists("Descriptives")) {
-  dir.create("Descriptives")
+if (!dir.exists("Análisis de viviendas/Descriptives")) {
+  dir.create("Análisis de viviendas/Descriptives")
 }
 save(measurements, file = "Análisis de viviendas/Descriptives/medidas_redes.RData")
 
 load("Análisis de viviendas/Descriptives/medidas_redes.RData")
-View(measurements)
 

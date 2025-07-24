@@ -37,7 +37,7 @@ data_filtrada <- data_ergomitos %>%
   ungroup() %>%
   filter(household_size > 1)
 
-length(unique(data_filtrada$household)) #son 52361 viviendas
+length(unique(data_filtrada$household)) #son 52536 viviendas
 save(data_filtrada, file = "Ergomitos/Data/Data_filtrada.RData")
 
 # Calcular casos completos
@@ -705,10 +705,10 @@ beep(8)
 ##Revisar las redes
 View(data_filtrada)
 #por id
-View(filter(ori_Casen2020_STATA,id_vivienda==110110210701))
+View(filter(ori_Casen2020_STATA,folio==110110010301))
 
 #por número
 plot(descent_igrpah_filtred[300][[1]]$descent_net)
-plot(marriage_igrpah_filtred[300][[1]]$marriage_net)
+plot(marriage_igraph_filtred[300][[1]]$marriage_net)
 plot(dependency_igraph_filtred[300][[1]]$dependency_net)
 plot(kinship_igrpah_filtred[300][[1]]$kinship_net)
