@@ -131,4 +131,4 @@ tabla_final <- edad_stats %>%
   left_join(ingresos, by = "tipologia")
 # Mostrar tabla
 print(tabla_final)
-
+View(tabla_final)

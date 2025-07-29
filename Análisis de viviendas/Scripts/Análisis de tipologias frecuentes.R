@@ -6,13 +6,16 @@
 #Liberías
 library(dplyr)
 library(igraph)
+library(ggmosaic)
 library(ggplot2)
 library(ggpubr)
 library(purrr)
 library(tidyr)
 library(tidyverse)
+library(rstatix)
 library(scales)
 library(stringr)
+library(vcd)
    
 # Cargar datos necesarios
 load("Ergomitos/Redes/kinship_igrpah.RData") #Redes
@@ -108,54 +111,111 @@ save(data_con_tipologia, file = "Análisis de viviendas/Data/Data_con_tipología
 variables_categoricas <- c("comuna", "region", "rural_cat", "sueldo_cat")
 
 # Función para pruebas estadísticas
-realizar_pruebas <- function(tipologia_sel) {
+chi_detallado <- function(tipologia_sel, variable_cat) {
   datos_filtrados <- data_con_tipologia %>%
     mutate(grupo = tipologia == tipologia_sel)
   
-  # 1. Prueba para ingresos (Kruskal-Wallis para variable ordinal)
-  prueba_ingreso <- kruskal.test(sueldo ~ grupo, data = datos_filtrados)
+  # Crear tabla de contingencia
+  tabla <- table(datos_filtrados[[variable_cat]], datos_filtrados$grupo)
   
-  # 2. Prueba para región (Chi-cuadrado)
-  tabla_region <- table(datos_filtrados$region, datos_filtrados$grupo)
-  prueba_region <- chisq.test(tabla_region)
+  # Ejecutar prueba de chi-cuadrado
+  prueba <- suppressWarnings(chisq.test(tabla))
   
-  # 3. Prueba para ruralidad (Chi-cuadrado)
-  tabla_rural <- table(datos_filtrados$rural_cat, datos_filtrados$grupo)
-  prueba_rural <- chisq.test(tabla_rural)
+  # Medida de efecto: V de Cramer
+  v_cramer <- suppressWarnings(cramer_v(tabla, correct = FALSE))
   
-  # Devolver resultados
+  # Extraer info en formato amigable
   tibble(
     Tipologia = tipologia_sel,
-    `p-valor (Ingreso)` = prueba_ingreso$p.value,
-    `p-valor (Región)` = prueba_region$p.value,
-    `p-valor (Ruralidad)` = prueba_rural$p.value,
-    `Efecto Rural (V Cramer)` = sqrt(prueba_rural$statistic / sum(tabla_rural))
+    Variable = variable_cat,
+    Chi2 = as.numeric(prueba$statistic),
+    df = as.integer(prueba$parameter),
+    p_value = as.numeric(prueba$p.value),
+    Min_esperado = min(prueba$expected),
+    Cramer_V = v_cramer
   )
 }
-
-# Aplicar a todas las tipologías
-resultados_comparativos <- map_dfr(unique(data_con_tipologia$tipologia), realizar_pruebas) %>%
-  mutate(across(contains("p-valor"), ~round(., 4)))
+# Aplicar la función para cada combinación de tipología y variable
+resultados_chi <- expand_grid(
+  tipologia = unique(data_con_tipologia$tipologia),
+  variable = variables_categoricas
+) %>%
+  pmap_dfr(~chi_detallado(..1, ..2))
+# Redondear para presentación
+resultados_chi <- resultados_chi %>%
+  mutate(across(c(Chi2, p_value, Cramer_V, Min_esperado), ~round(., 4)))
 
 # Guardar resultados
-write_csv(resultados_comparativos, "resultados_comparativos_tipologias.csv")
+write_csv(resultados_chi, "Análisis de viviendas/Analisis/resultados_chi_tipologias.csv")
 
 # Heatmap de significancia
-resultados_comparativos %>%
-  pivot_longer(cols = -Tipologia, names_to = "Variable", values_to = "Valor") %>%
-  filter(str_detect(Variable, "p-valor")) %>%
-  mutate(Significativo = Valor < 0.05) %>%
+resultados_chi %>%
+  mutate(Significativo = p_value < 0.05) %>%
   ggplot(aes(x = Tipologia, y = Variable, fill = Significativo)) +
   geom_tile(color = "white") +
-  #geom_text(aes(label = round(Valor, 3)), color = "black", size = 3) +
-  scale_fill_manual(values = c("FALSE" = "gray90", "TRUE" = "steelblue")) +
-  labs(title = "Significancia estadística por tipología y variable",
-       x = "Tipología", y = "Variable") +
+  geom_text(aes(label = format(round(Chi2, 2))),
+            angle = 90,           # Rotar el texto
+            vjust = 0.5,          # Ajuste vertical (centrado)
+            hjust = 0.5,          # Ajuste horizontal (centrado)
+            color = "black", size = 3) +
+  scale_fill_manual(values = c("TRUE" = "steelblue", "FALSE" = "gray90")) +
+  labs(title = "Significancia estadística (Chi²) por tipología y variable",
+       x = "Tipología", y = "Variable", fill = "p < 0.05") +
   theme_minimal() +
-  theme(axis.text.x = element_text(angle = 45, hjust = 1))
+  theme(axis.text.x = element_text(angle = 45, hjust = 1),
+        panel.grid = element_blank())
 
 #p_value < 0.05 → Hay evidencia estadística de que la distribución de esa variable varía en esta tipología comparada con el resto.
 #Ejemplo: T1 - sex - p = 0.00001 significa que en la red T1 hay una distribución de sexo distinta a las otras tipologías.
 
 #p_value >= 0.05 → No hay evidencia estadística de asociación; la distribución de la variable no varía significativamente entre T1 y el resto.
 #Ejemplo: T2 - r3 - p = 0.58 → los hogares indígenas o no indígenas están distribuidos igual en T2 y fuera de T2.
+
+# Mosaic plot
+# Crear carpeta para guardar los gráficos
+dir.create("Análisis de viviendas/Analisis/mosaic_plots_por_tipologia", showWarnings = FALSE)
+
+# Función para generar mosaic por variable y tipología (comparando grupo vs resto)
+generar_mosaic_por_tipologia <- function(tipologia_sel, variable_cat) {
+  datos_filtrados <- data_con_tipologia %>%
+    mutate(grupo = ifelse(tipologia == tipologia_sel, tipologia_sel, "Otras")) %>%
+    filter(!is.na(.data[[variable_cat]]))
+  
+  fml <- as.formula(paste("~", variable_cat, "+ grupo"))
+  
+  nombre_archivo <- paste0("Análisis de viviendas/Analisis/mosaic_plots_por_tipologia/",
+                           variable_cat, "_", gsub("[^[:alnum:]]", "_", tipologia_sel), ".png")
+  
+  png(nombre_archivo, width = 1000, height = 800)
+  mosaic(
+    fml,
+    data = datos_filtrados,
+    shade = TRUE,
+    direction = c("v", "h"),
+    main = paste("Mosaic plot:", variable_cat, "vs", tipologia_sel),
+    labeling_args = list(
+      set_varnames = setNames(c("Categoría", "Grupo"), c(variable_cat, "grupo")),
+      rot_labels = c(30, 0, 0, 0)
+    ),
+    margins = c(5, 5, 10, 5)
+  )
+  dev.off()
+}
+variables_categoricas_2 <- c("region", "rural_cat", "sueldo_cat")
+
+# Generar combinaciones de tipología y variable categórica
+combinaciones <- expand_grid(
+  tipologia = unique(data_con_tipologia$tipologia),
+  variable = variables_categoricas_2
+)
+
+# Ejecutar la función usando pmap
+pmap(
+  combinaciones,
+  generar_mosaic_por_tipologia
+)
+# Los colores azul y rojo representan los residuos de Pearson de una prueba de chi-cuadrado. Estos residuos indican cuánto difieren las frecuencias observadas de las esperadas bajo la hipótesis de independencia.
+# Los casos rojos indican que las frecuencias observadas son menores que las esperadas, mientras que los casos azules indican que son mayores que las esperadas. Gris, lo observado es cercano a lo esperado, sin diferencia importante
+
+# EJEMPLO:  Si la tipologúa 12 y sueldo Q1 está coloreado en azul intenso esto indica que hay más casos observados de sueldos bajos en Tipología 12 de lo que se esperaría si la tipología y el nivel de sueldo fueran independientes. Es decir, la Tipología 12 tiene una tendencia significativa a tener sueldos bajos (sobrerrepresentación).
+# Si la celda está de color rojo intenso Hay menos casos observados de sueldos bajos en Tipología 12 de lo esperado bajo independencia. Esto implica que la Tipología 12 tiene una tendencia a no tener sueldos bajos (subrepresentación).
