@@ -5,11 +5,13 @@
 # Networks & Covariates files
 load("Ergomitos/Redes/dependency_network.RData")
 load("Ergomitos/Redes/descent_network.RData")
+load("Ergomitos/Redes/marriage_network.RData")
 
-objs <-load("Ergomitos/Data/Data_Ergomitos.RData")
+
+#objs <-load("Ergomitos/Data/Data_Ergomitos.RData")
 #print(objs)                # mira el nombre que trae el data.frame
 # Reasignar
-data_ergmitos <- get(objs[1])  
+#data_ergmitos <- get(objs[1])  
 
 
 
@@ -19,14 +21,14 @@ data_ergmitos <- get(objs[1])
 # Filtrar redes basado en tamaño (número de actores) y número de vínculos
 lists_dependency <- list() # Crear una lista para guardar las redes filtradas
 lists_descent <- list() # Crear una lista para guardar las redes filtradas
-#lists_marriage <- list() # Crear una lista para guardar las redes filtradas
+lists_marriage <- list() # Crear una lista para guardar las redes filtradas
 
 
 #i=1
 for (i in seq_along(dependency_network)) {
   dependency <- dependency_network[[i]][['dependency_net']]  # Subconjunto de una red
   descent <- descent_network[[i]][["descent_net"]]  # Subconjunto de una red
-  #marriage <- marriage_network[[i]][["marriage_net"]]  # Subconjunto de una red
+  marriage <- marriage_network[[i]][["marriage_net"]]  # Subconjunto de una red
   
   if (length(dependency[["val"]]) == 6 #& length(dependency[["val"]]) <= 5 
       &  # Tamaño entre 3 y 5 actores Overall, the exact likelihood calculation is only possible when dealing with directed (undirected) networks size 5 (7).
@@ -38,8 +40,8 @@ for (i in seq_along(dependency_network)) {
       length(descent[["val"]]) == 6  #& length(descent[["val"]]) <= 5  #&
       #length(descent[["mel"]]) >= 2 #& length(descent[["mel"]]) <= 3
       
-      #&
-      #length(marriage[["val"]]) == 4  #& length(marriage[["val"]]) <= 4  #&
+      &
+      length(marriage[["val"]]) == 6  #& length(marriage[["val"]]) <= 4  #&
       
       
   ) # Entre 2 y 10 vínculos 
@@ -48,14 +50,14 @@ for (i in seq_along(dependency_network)) {
     #lists[[length(lists) + 1]] <- dependency # Agregar red que cumple las condiciones a la lista
     lists_dependency[[length(lists_dependency) + 1]] <- dependency # Agregar red que cumple las condiciones a la lista
     lists_descent[[length(lists_descent) + 1]] <- descent # Agregar red que cumple las condiciones a la lista
-    #lists_marriage[[length(lists_marriage) + 1]] <- marriage # Agregar red que cumple las condiciones a la lista
+    lists_marriage[[length(lists_marriage) + 1]] <- marriage # Agregar red que cumple las condiciones a la lista
     
     
   }
 }
 length(lists_dependency)
 length(lists_descent)
-#length(lists_marriage)
+length(lists_marriage)
 
 
 
@@ -89,7 +91,7 @@ library(knitr)
 
 G <- lists_dependency
 descent <- lists_descent 
- #marriage <- lists_marriage
+marriage <- lists_marriage
 #class(G)
 #length(G)
 
@@ -109,10 +111,10 @@ for (i in seq_along(G)) {
   G[[i]] %n% "descent" <- descent[[i]]
 }
 
-#marriage <- lapply(marriage, function(x) as.matrix(x))  # Convert all elements to matrices
-#for (i in seq_along(G)) {
-#  G[[i]] %n% "marriage" <- marriage[[i]]
-#}
+marriage <- lapply(marriage, function(x) as.matrix(x))  # Convert all elements to matrices
+for (i in seq_along(G)) {
+  G[[i]] %n% "marriage" <- marriage[[i]]
+}
 
 
 
@@ -150,7 +152,7 @@ for (i in seq_along(G)) {
 # edad - edad numérico
 # sexo - sexo binario levels: 1(Hombre), 2(Mujer)
 # e6a  - nivel educativo: "¿Cuál es el nivel más alto alcanzado o el nivel educacional actual?", 17 labels de 1 "Nunca asistío" hasya 17 "Posgrado"
-# o1   - ¿trabajó la semana pasada? binario: 1(si), 2(no)
+# o1   - ¿trabajó la semana pasada? binario: 1(si), 2(no); No_aplica*  
 # r1b_pais_esp - nacionalidad levels: 1(chileno), 2(extranjero), 3(no responde) 
 # ecivil - estado civil levels: 1 "Casado(a)" hasta 9 "No sabe\\No responde"
 # r3   - pueblo indígena levels:1-10 distintos pueblos indígenas, 11 - no pertenece a un pueblo indígena
@@ -159,20 +161,21 @@ for (i in seq_along(G)) {
 # region - región [nivel vivienda]*
 
 # Listar atributos de nodo disponibles por red
-nodo_attrs <- lapply(G, list.vertex.attributes)
-nodo_attrs
+#nodo_attrs <- lapply(G, list.vertex.attributes)
+#nodo_attrs
 
 ## check variables values in different househoulds
- #sapply(G, function(net) table(get.vertex.attribute(net, "edad"), useNA = "always")) ## age
- #sapply(G, function(net) table(get.vertex.attribute(net, "sex"), useNA = "always")) ## sex
- #sapply(G, function(net) table(get.vertex.attribute(net, "e6a"), useNA = "always")) ## education level
- #sapply(G, function(net) table(get.vertex.attribute(net, "o1"), useNA = "always")) ## worked last week
- #sapply(G, function(net) table(get.vertex.attribute(net, "r1b_pais_esp"), useNA = "always")) ##  nationality
- #sapply(G, function(net) table(get.vertex.attribute(net, "ecivil"), useNA = "always")) ## marital status
- #sapply(G, function(net) table(get.vertex.attribute(net, "edad_legal"), useNA = "always")) ## legal age
- #sapply(G, function(net) table(get.vertex.attribute(net, "edad_dependencia_estudias"), useNA = "always")) ## economic dependency age
- #sapply(G, function(net) table(get.vertex.attribute(net, "r3"), useNA = "always")) ## indigenous background
- sapply(G2, function(net) table(get.vertex.attribute(net, "s28"), useNA = "always")) ## medical treatment last week
+ sapply(G, function(net) table(get.vertex.attribute(net, "edad"), useNA = "always")) ## age
+ sapply(G, function(net) table(get.vertex.attribute(net, "sex"), useNA = "always")) ## sex
+ sapply(G, function(net) table(get.vertex.attribute(net, "e6a"), useNA = "always")) ## education level
+ sapply(G, function(net) table(get.vertex.attribute(net, "o1"), useNA = "always")) ## worked last week
+ sapply(G, function(net) table(get.vertex.attribute(net, "r1b_pais_esp"), useNA = "always")) ##  nationality
+ sapply(G, function(net) table(get.vertex.attribute(net, "ecivil"), useNA = "always")) ## marital status
+ sapply(G, function(net) table(get.vertex.attribute(net, "edad_legal"), useNA = "always")) ## legal age
+ sapply(G, function(net) table(get.vertex.attribute(net, "edad_dependencia_estudias"), useNA = "always")) ## economic dependency age
+ sapply(G, function(net) table(get.vertex.attribute(net, "edad_laboral"), useNA = "always")) ## economic dependency age
+ sapply(G, function(net) table(get.vertex.attribute(net, "r3"), useNA = "always")) ## indigenous background
+ sapply(G, function(net) table(get.vertex.attribute(net, "s28"), useNA = "always")) ## medical treatment last week (REVISAR)
 
 # issues 
  #edad_dependencia_estudias # solo valores 6
@@ -192,56 +195,56 @@ nodo_attrs
 
 # ——— Asignar covariables individuales a cada red ———
 
-library(network)
-library(dplyr)
-
-data_ergmitos$id_persona <- as.character(data_ergmitos$id_persona)
-
-G2 <- lapply(seq_along(G), function(i) {
-  net   <- G[[i]]
-  raw   <- dependency_network[[i]][["dependency_net"]]
-  hh_id <- dependency_network[[i]][["household_i"]]
-  
-  # Extrae y fija el atributo id_persona en la red
-  ids <- as.character(raw$val[[1]]$vertex.names)
-  net %v% "id_persona" <- ids
-  
-  # Data filtrada para esta vivienda
-  df_sub <- data_ergmitos %>% filter(household == hh_id)
-  
-  # Vector final de asignación, uno por cada vértice
-  covs <- setdiff(names(df_sub), c("household","id_persona"))
-  for (cov in covs) {
-    # Para cada vértice buscamos su fila en df_sub
-    assigned <- sapply(net %v% "id_persona", function(pid) {
-      row <- df_sub[df_sub$id_persona == pid, cov]
-      if (length(row) == 0) return(NA)
-      if (length(row) > 1) {
-        warning(sprintf(
-          "Household %s, cov %s: más de una fila para ID %s, usando la primera",
-          hh_id, cov, pid
-        ))
-        row <- row[1]
-      }
-      return(row)
-    })
-    
-    # Debug: longitud y tipos
-    message(sprintf(
-      "Household %s: asignando '%s' → length(assigned)=%d, network.size=%d, class=%s",
-      hh_id, cov, length(assigned),
-      network.size(net),
-      paste(class(assigned), collapse="/")
-    ))
-    
-    # Finalmente la asignación (ahora length(assigned)==network.size(net))
-    net %v% cov <- assigned
-  }
-  
-  net
-})
-
-G <- G2
+#library(network)
+#library(dplyr)
+#
+#data_ergmitos$id_persona <- as.character(data_ergmitos$id_persona)
+#
+#G2 <- lapply(seq_along(G), function(i) {
+#  net   <- G[[i]]
+#  raw   <- dependency_network[[i]][["dependency_net"]]
+#  hh_id <- dependency_network[[i]][["household_i"]]
+#  
+#  # Extrae y fija el atributo id_persona en la red
+#  ids <- as.character(raw$val[[1]]$vertex.names)
+#  net %v% "id_persona" <- ids
+#  
+#  # Data filtrada para esta vivienda
+#  df_sub <- data_ergmitos %>% filter(household == hh_id)
+#  
+#  # Vector final de asignación, uno por cada vértice
+#  covs <- setdiff(names(df_sub), c("household","id_persona"))
+#  for (cov in covs) {
+#    # Para cada vértice buscamos su fila en df_sub
+#    assigned <- sapply(net %v% "id_persona", function(pid) {
+#      row <- df_sub[df_sub$id_persona == pid, cov]
+#      if (length(row) == 0) return(NA)
+#      if (length(row) > 1) {
+#        warning(sprintf(
+#          "Household %s, cov %s: más de una fila para ID %s, usando la primera",
+#          hh_id, cov, pid
+#        ))
+#        row <- row[1]
+#      }
+#      return(row)
+#    })
+#    
+#    # Debug: longitud y tipos
+#    message(sprintf(
+#      "Household %s: asignando '%s' → length(assigned)=%d, network.size=%d, class=%s",
+#      hh_id, cov, length(assigned),
+#      network.size(net),
+#      paste(class(assigned), collapse="/")
+#    ))
+#    
+#    # Finalmente la asignación (ahora length(assigned)==network.size(net))
+#    net %v% cov <- assigned
+#  }
+#  
+#  net
+#})
+#
+#G <- G2
 
 
 
@@ -272,7 +275,7 @@ G <- G2
 
 
 
-
+## buscar efecto cuadratico para edad!!!
 
 
 
@@ -282,103 +285,84 @@ G <- G2
 ## Definir modelo ERGM ------------------------------------------------------------------------
 f.wd <- Networks(G) ~
   
-  # Model 1: Basic structural effects
+# Model 1: Basic structural effects
   #N(~edges, lm = ~ I(n <= 3) + I(n >= 5)
     
   #N(~edges, lm = ~ I(n == 3) + I(n == 5)) + 
   
-  # Model 2: Mutuality and isolates
-  N(~edges+mutual+edgecov("descent")
-    #+edgecov("marriage")#+ 
+# Model 2: Mutuality and isolates
+  N(~edges
+  +mutual 
   
-  # Model 3: Node attribute effect (age) applied to all layers
+# Model 3: Node attribute effect (age) applied to all layers
 
   #N(~F(~nodecov("edad"))#,
   #     #~nodematch("region", levels=I("13"))
   #)
   #N(~F(~
-#  +odegree(2)
-#  #+isolates
-#  
-#  #+istar(2) # Not estimated
-#  #+transitive # Not estimated
-#  +nodematch("sex")
-#  +nodeocov("sex")
-#  #+nodeicov("sex")
-#  + nodematch('sex', diff=F)    # Homofilia para variables categóricas
   
-  #+nodeifactor("sex")
-  #+absdiff("edad")
-  #+nodeocov("edad")
-  #+nodeicov("edad")  
-#  
-#  # education level 
-  #+ nodeicov("e6a")  # Popularidad para variables categóricas
-  #+ nodeocov("e6a")  # Actividad para variables categóricas
-  #+ absdiff('e6a')    # Homofilia para variables categóricas
-  #    
-  #    # indigenous background 
-  #     + nodeicov("r3")  # Popularidad para variables categóricas
-  #     + nodeocov("r3")  # Actividad para variables categóricas
-       #+ nodematch('r3', diff=T)    # Homofilia para variables categóricas
-  #    
-  #         + nodeicov("edad_laboral")  # Popularidad para variables categóricas
-#+ nodeicov("ecivil")  # Popularidad para variables categóricas
-#+ nodeocov("ecivil")  # Actividad para variables categóricas
-#+ nodematch('ecivil', diff=F)    # Homofilia para variables categóricas
+  +odegree(2)
+  +isolates
+  #+istar(2) # Not estimated
+  #+transitive # Not estimated
 
-     + nodeifactor("edad_laboral")  # Popularidad para variables categóricas
-     + nodeofactor("edad_laboral")  # Actividad para variables categóricas
-     + nodematch('edad_laboral', diff=F)    # Homofilia para variables categóricas
+# dyadic covariates  
+  +edgecov("descent")
+  +edgecov("marriage")
 
-+ nodeifactor("s28")  # Popularidad para variables categóricas
-+ nodeofactor("s28")  # Actividad para variables categóricas
-+ nodematch('s28', diff=F)    # Homofilia para variables categóricas
+ # sex
+  +nodeicov("sex")
+  +nodeocov("sex")
+  +nodematch('sex', diff=F)    # Homofilia para variables categóricas
+ # education level 
+  + nodeicov("e6a")  # Popularidad para variables categóricas
+  + nodeocov("e6a")  # Actividad para variables categóricas
+  + absdiff('e6a')    # Homofilia para variables categóricas
+  # indigenous background 
+   #+ nodeicov("r3")  # Popularidad para variables categóricas
+   #+ nodeocov("r3")  # Actividad para variables categóricas
+   #+ nodematch('r3', diff=T)    # Homofilia para variables categóricas
+  # marriage status   
+   #+ nodeicov("ecivil")  # Popularidad para variables categóricas
+   #+ nodeocov("ecivil")  # Actividad para variables categóricas
+   #+ nodematch('ecivil', diff=F)    # Homofilia para variables categóricas
+  # working age  
+   #+ nodeifactor("edad_laboral")  # Popularidad para variables categóricas
+   #+ nodeofactor("edad_laboral")  # Actividad para variables categóricas
+   #+ nodematch('edad_laboral', diff=F)    # Homofilia para variables categóricas
+  # dependent student
+   #+ nodeicov("edad_dependencia_estudios")  # Popularidad para variables categóricas
+   #+ nodeocov("edad_dependencia_estudios")  # Actividad para variables categóricas
+   #+ nodematch('edad_dependencia_estudios', diff=F)    # Homofilia para variables categóricas
+  # legal age
+   #+ nodeicov("edad_legal")  # Popularidad para variables categóricas
+   #+ nodeocov("edad_legal")  # Actividad para variables categóricas
+   #+ nodematch('edad_legal', diff=F)    # Homofilia para variables categóricas
+  # nationality
+    #+ nodeifactor("r1b_pais_esp")  # Popularidad para variables categóricas
+    #+ nodeofactor("r1b_pais_esp")  # Actividad para variables categóricas
+    #+ nodematch('r1b_pais_esp',diff=T)    # Homofilia para variables categóricas
+  # age
+  + nodeicov("edad")  # Popularidad para variables númericas
+  + nodeocov("edad")  # Actividad para variables númericas
+  + absdiff('edad')    # Homofilia para variables númericas
+  # medical treatment last week
+   #+ nodeifactor("s28")  # Popularidad para variables categóricas
+   #+ nodeofactor("s28")  # Actividad para variables categóricas
+   #+ nodematch('s28', diff=F)    # Homofilia para variables categóricas
+ # wages 
+    #+ nodeicov("y1")  # Popularidad para variables númericas
+    #+ nodeocov("y1")  # Actividad para variables númericas
+    #+ absdiff('y1')    # Homofilia para variables númericas
+  # got wages last week
+    #+ nodeifactor("o1")  # Popularidad para variables categóricas
+    #+ nodeofactor("o1")  # Actividad para variables categóricas
+    #+ nodematch('o1')    # Homofilia para variables categóricas
+  # worked last week
+    #+ nodeifactor("y1_")  # Popularidad para variables categóricas
+    #+ nodeofactor("y1_")  # Actividad para variables categóricas
+    #+ nodematch('y1_')    # Homofilia para variables categóricas
 
-#+ nodeicov("edad_dependencia_estudios")  # Popularidad para variables categóricas
-#+ nodeocov("edad_dependencia_estudios")  # Actividad para variables categóricas
-#+ nodematch('edad_dependencia_estudios', diff=F)    # Homofilia para variables categóricas
-
-#+ nodeicov("edad_legal")  # Popularidad para variables categóricas
-#+ nodeocov("edad_legal")  # Actividad para variables categóricas
-#+ nodematch('edad_legal', diff=F)    # Homofilia para variables categóricas
-
-
-  #    # nationality
-  #+ nodeifactor("r1b_pais_esp")  # Popularidad para variables categóricas
-  #+ nodeofactor("r1b_pais_esp")  # Actividad para variables categóricas
-  #+ nodematch('r1b_pais_esp',diff=T)    # Homofilia para variables categóricas
-  #    
-  #    # medical treatment (no statistics)
-  #    #+ nodeicov("s28")  # Popularidad para variables categóricas
-  #    #+ nodeocov("s28")  # Actividad para variables categóricas
-  #    #+ nodematch('s28', diff=T)    # Homofilia para variables categóricas
-  #    
-  #    # medical attention (no statistics)
-  #    #+ nodeifactor("s17")  # Popularidad para variables categóricas
-  #    #+ nodeofactor("s17")  # Actividad para variables categóricas
-  #    #+ nodematch('s17', diff=F)    # Homofilia para variables categóricas
-  #    
-  #    # age
-  #    + nodeicov("edad")  # Popularidad para variables númericas
-  #    + nodeocov("edad")  # Actividad para variables númericas
-  #    + absdiff('edad')    # Homofilia para variables númericas
-  #    
-  #    # wages 
-  #+ nodeicov("y1")  # Popularidad para variables númericas
-  #+ nodeocov("y1")  # Actividad para variables númericas
-  #+ absdiff('y1')    # Homofilia para variables númericas
-  #    
-  #    # got wages last week
-  #    #+ nodeifactor("o1")  # Popularidad para variables categóricas
-  #    #+ nodeofactor("o1")  # Actividad para variables categóricas
-  #    #+ nodematch('o1')    # Homofilia para variables categóricas
-  #    
-  #    # worked last week
-  #    #+ nodeifactor("y1_")  # Popularidad para variables categóricas
-  #    #+ nodeofactor("y1_")  # Actividad para variables categóricas
-  #    #+ nodematch('y1_')    # Homofilia para variables categóricas
-  
   )
   #)
   

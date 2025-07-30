@@ -23,33 +23,49 @@ tipologias_validas <- paste0("T", 1:48)
 tipologia_df <- tipologia_df %>% filter(Tipologia %in% tipologias_validas)
 
 # 5. Guardar un grafo de ejemplo por tipología
-# Solo mantener redes de T1 a T48
-examples <- lapply(tipologias_validas, function(tip) {
-  idx <- which(names(tipologia_freq) == tip)
-  fp <- unique_fps[idx]
-  grafo <- kinship_igraph_no_attrs[[which(fingerprints == fp)[1]]]$kinship_net
-  return(grafo)
+examples <- lapply(unique_fps, function(fp) {
+  idx <- which(fingerprints == fp)[1]
+  kinship_igraph_no_attrs[[idx]]$kinship_net
 })
-names(examples) <- tipologias_validas
+names(examples) <- paste0("T", seq_along(unique_fps))  # Asignar nombres T1, T2, ...
 
 # Función independiente para detectar estructuras intergeneracionales
-detectar_intrgeneracional <- function(grafo) {
+detectar_intergeneracional <- function(grafo) {
   if (vcount(grafo) < 3) return(FALSE)
   
-  descent_edges <- E(grafo)[type == "descent"]
-  descent_grafo <- subgraph.edges(grafo, descent_edges, delete.vertices = FALSE)
-  
-  # Buscar caminos simples de largo exactamente 2: abuelo -> padre -> nieto
-  caminos_largo_2 <- all_simple_paths(descent_grafo, mode = "out", cutoff = 2)
-  
-  for (camino in caminos_largo_2) {
-    if (length(camino) == 3) {
-      return(TRUE)  # Encontrado un camino intergeneracional
+  # Buscar cadenas puras de 3 generaciones conectadas por 'descent'
+  for (v in V(grafo)) {
+    # Cadena ascendente: abuelo -> padre -> ego
+    padres <- neighbors(grafo, v, mode = "in")
+    if (length(padres) >= 1) {
+      for (p in padres) {
+        abuelos <- neighbors(grafo, p, mode = "in")
+        if (length(abuelos) >= 1) {
+          # Verificar conexiones consecutivas
+          if (all(E(grafo)[p %->% v]$type == "descent") && 
+              all(E(grafo)[abuelos %->% p]$type == "descent")) {
+            return(TRUE)
+          }
+        }
+      }
+    }
+    
+    # Cadena descendente: ego -> hijo -> nieto
+    hijos <- neighbors(grafo, v, mode = "out")
+    if (length(hijos) >= 1) {
+      for (h in hijos) {
+        nietos <- neighbors(grafo, h, mode = "out")
+        if (length(nietos) >= 1) {
+          if (all(E(grafo)[v %->% h]$type == "descent") && 
+              all(E(grafo)[h %->% nietos]$type == "descent")) {
+            return(TRUE)
+          }
+        }
+      }
     }
   }
   return(FALSE)
 }
-
 # Función para detectar estructuras familiares en un grafo
 clasificar_tipologia <- function(grafo) {
   # Extraer atributos de las aristas (relaciones)
@@ -145,10 +161,10 @@ df_macro <- df_final %>%
   mutate(
     macrogrupo = case_when(
       intergeneracional == 1 & padrastros == 0 & suegros == 0 & monoparental == 0 & nodos_aislados == 0 ~ "Intergeneracional",
-      intergeneracional == 1 & (suegros == 1 | nodos_aislados == 1) ~ "Extendida",
+      (suegros == 1 | nodos_aislados == 1) & Aristas != 0 ~ "Extendida",
       padrastros == 1 ~ "Reconstituida (presencia de mapadrastros)",
       monoparental == 1 ~ "Monoparental",
-      nodos_aislados == 1 ~ "Aislada",
+      nodos_aislados == 1 & Aristas == 0 ~ "Aislada",
       TRUE ~ "Nuclear tradicional"
     ) 
   )%>%
