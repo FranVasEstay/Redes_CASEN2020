@@ -1,8 +1,20 @@
-*.Rproj.user
-*.Rhistory
-*.RDataTmp1
-*.RDataTmp2
-*.RDataTmp3
-*.RDataTmp4
+# RStudio files
+.Rproj.user/
+*.Rproj
+# R history and session files
+.Rhistory
+.RData
+.Ruserdata
+# Temporary R files
+*.RDataTmp*
+*.Rtmp*
+# Environment files
+.Renviron
+.Rprofile
 
-.Rproj.user
+# Knitr and RMarkdown cache
+*_cache/
+/cache/
+# Mac OS files
+.DS_Store
+
