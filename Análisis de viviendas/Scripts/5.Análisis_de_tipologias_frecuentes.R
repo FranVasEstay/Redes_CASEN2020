@@ -1,4 +1,6 @@
 ################################################################################
+###################### Social Network: encuesta CASEN ##########################
+################################################################################
 ########### ANÁLISIS DE LAS TIPOLOGÍAS MÁS FRECUENTES ##########################
 ################################################################################
 #Este script calcula varios estadísticos y crea visualizaciones que tienen por fin analizar las tipologías creadas de las redes kinship de la encuesta CASEN#

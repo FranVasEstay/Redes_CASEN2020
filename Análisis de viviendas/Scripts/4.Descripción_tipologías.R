@@ -1,6 +1,15 @@
+################################################################################
+###################### Social Network: encuesta CASEN ##########################
+################################################################################
+#######################Buscar estructuras de las redes##########################
+################################################################################
+#Este script describe las tipologías de las redes creadas a partir de la encuesta CASEN#
+
+#Librerías
 library(dplyr)
 library(tidyr)
 
+#Datos
 load("Análisis de viviendas/Data/Data_con_tipología.RData")
 load("Análisis de viviendas/Data/Data_analisis.RData")
 

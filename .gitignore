@@ -6,7 +6,7 @@
 .RData
 .Ruserdata
 # Temporary R files
-*.RDataTmp*
+.RDataTmp*
 *.Rtmp*
 # Environment files
 .Renviron

@@ -1,3 +1,9 @@
+################################################################################
+###################### Social Network: encuesta CASEN ##########################
+################################################################################
+########## VISUALIZACIÓN GÉNERO - JEFE DE HOGAR - PROMEDIO EDAD#################
+################################################################################
+
 #Liberías
 library(igraph)
 library(ggraph)
@@ -7,10 +13,8 @@ library(scales)
 library(dplyr)
 library(tibble)
 library(purrr)
-################################################################################
-# VISUALIZACIÓN GÉNERO - JEFE DE HOGAR - PROMEDIO EDAD
-################################################################################
-## Cargar datos de redes
+
+# Cargar datos de redes
 load("Análisis de viviendas/Data/fingerprints.RData") #Tiene fingerprints de cada data
 load("Análisis de viviendas/Redes/kinship_igraph_no_attrs.RData") # red SIN NINGÚN atributo
 load("Análisis de viviendas/Redes/kinship_igrpah.RData") #red con atributos
@@ -41,14 +45,15 @@ tipologias_validas <- unique(households_por_tipologia$Tipologia)
 freq_table <- table(fingerprints)
 unique_fps <- names(sort(freq_table, decreasing = TRUE))
 tipologia_freq <- freq_table[unique_fps]  # Reordenamos la tabla
-
+total_redes <- sum(freq_table)
+tipologia_porcentaje <- round((freq_table / total_redes) * 100, 1)
 # 5. Guardar un grafo de ejemplo por tipología
 examples <- lapply(unique_fps, function(fp) {
   idx <- which(fingerprints == fp)[1]
   kinship_igraph_no_attrs[[idx]]$kinship_net
 })
 names(examples) <- paste0("T", seq_along(unique_fps))  # Asignar nombres T1, T2, ...
-
+names(tipologia_porcentaje) <- names(examples)
 # Unir los datos para tener tipología + información individual
 datos_completos <- data_analisis %>%
   left_join(data_con_tipologia %>% select(household, tipologia), by = "household")
@@ -292,7 +297,8 @@ plot_nodos <- function(grafo, datos_nodo, datos_sexo, tipologia) {
     rescale = FALSE,
     xlim = range(lay[,1]) + c(-0.1, 0.1),
     ylim = range(lay[,2]) + c(-0.1, 0.1),
-    main = paste("Tipología", tipologia, ": proporción de jefatura (%), edad promedio (tamaño), y sexo (colores)"),
+    main = paste0("Tipología ", tipologia, " (", tipologia_porcentaje[tipologia], "% de redes)"),
+    sub = paste("Proporción de jefatura (%), edad promedio (tamaño), y sexo (colores)"),
     vertex.label.family = "sans"
   )
   

@@ -1,4 +1,6 @@
 ################################################################################
+###################### Social Network: encuesta CASEN ##########################
+################################################################################
 ###################### CLASIFICACIÓN DE TIPOLOGÍAS #############################
 ################################################################################
 
@@ -157,17 +159,18 @@ write.csv(df_final, "Análisis de viviendas/Analisis/Resultados_tipologias/clasi
 
 #### MACROGRUPOS ####
 df_macro <- df_final %>%
-  select(Tipologia, everything()) %>%
+  rename(tipologia = Tipologia) %>% 
+  select(tipologia, everything()) %>%
   mutate(
     macrogrupo = case_when(
       intergeneracional == 1 & padrastros == 0 & suegros == 0 & monoparental == 0 & nodos_aislados == 0 ~ "Intergeneracional",
       (suegros == 1 | nodos_aislados == 1) & Aristas != 0 ~ "Extendida",
-      padrastros == 1 ~ "Reconstituida (presencia de mapadrastros)",
+      padrastros == 1 ~ "Reconstituida", # (presencia de mapadrastros)
       monoparental == 1 ~ "Monoparental",
       nodos_aislados == 1 & Aristas == 0 ~ "Aislada",
       TRUE ~ "Nuclear tradicional"
     ) 
   )%>%
-  select(Tipologia,macrogrupo)
+  select(tipologia,macrogrupo)
 table(df_macro$macrogrupo)
 write.csv(df_macro, "Análisis de viviendas/Analisis/Resultados_tipologias/clasificacion_tipologias_con_macrogrupos.csv", row.names = FALSE)
