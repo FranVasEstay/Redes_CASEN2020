@@ -1,7 +1,7 @@
 ################################################################################
 ###################### Social Network: encuesta CASEN ##########################
 ################################################################################
-########### ANÁLISIS DE LAS TIPOLOGÍAS MÁS FRECUENTES ##########################
+########### 5. ANÁLISIS DE LAS TIPOLOGÍAS MÁS FRECUENTES ##########################
 ################################################################################
 #Este script calcula varios estadísticos y crea visualizaciones que tienen por fin analizar las tipologías creadas de las redes kinship de la encuesta CASEN#
 
@@ -93,7 +93,7 @@ data_con_tipologia <- data_con_tipologia %>%
     # Convertir porcentajes rurales en categorías
     rural_cat = cut(porc_rural, 
                     breaks = c(0, 30, 70, 100),
-                    labels = c("Urbano", "Mixto", "Rural")),
+                    labels = c("Urbano", "Mixto", "Rural"),include.lowest = TRUE),
     
     # Categorizar sueldos por quintiles
     sueldo_cat = ntile(sueldo, 5),
@@ -105,6 +105,7 @@ data_con_tipologia <- data_con_tipologia[order(data_con_tipologia$tipologia), ]
 
 View(data_con_tipologia)
 save(data_con_tipologia, file = "Análisis de viviendas/Data/Data_con_tipología.RData")
+
 ################################################################################
 # PASO 2: CHI CUADRADO (PRUEBAS ESTADÍSTICAS)
 ################################################################################
@@ -166,7 +167,7 @@ resultados_chi %>%
   theme_minimal() +
   theme(axis.text.x = element_text(angle = 45, hjust = 1),
         panel.grid = element_blank())
-
+ggsave("Análisis de viviendas/Analisis/heatmap_significancia.png",width = 10, height = 6, dpi = 300)
 #p_value < 0.05 → Hay evidencia estadística de que la distribución de esa variable varía en esta tipología comparada con el resto.
 #Ejemplo: T1 - sex - p = 0.00001 significa que en la red T1 hay una distribución de sexo distinta a las otras tipologías.
 
@@ -219,5 +220,5 @@ pmap(
 # Los colores azul y rojo representan los residuos de Pearson de una prueba de chi-cuadrado. Estos residuos indican cuánto difieren las frecuencias observadas de las esperadas bajo la hipótesis de independencia.
 # Los casos rojos indican que las frecuencias observadas son menores que las esperadas, mientras que los casos azules indican que son mayores que las esperadas. Gris, lo observado es cercano a lo esperado, sin diferencia importante
 
-# EJEMPLO:  Si la tipologúa 12 y sueldo Q1 está coloreado en azul intenso esto indica que hay más casos observados de sueldos bajos en Tipología 12 de lo que se esperaría si la tipología y el nivel de sueldo fueran independientes. Es decir, la Tipología 12 tiene una tendencia significativa a tener sueldos bajos (sobrerrepresentación).
+# EJEMPLO:  Si la tipología 12 y sueldo Q1 está coloreado en azul intenso esto indica que hay más casos observados de sueldos bajos en Tipología 12 de lo que se esperaría si la tipología y el nivel de sueldo fueran independientes. Es decir, la Tipología 12 tiene una tendencia significativa a tener sueldos bajos (sobrerrepresentación).
 # Si la celda está de color rojo intenso Hay menos casos observados de sueldos bajos en Tipología 12 de lo esperado bajo independencia. Esto implica que la Tipología 12 tiene una tendencia a no tener sueldos bajos (subrepresentación).

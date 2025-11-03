@@ -1,0 +1,6 @@
+"Cluster","n_tipologias","freq_total","prop_intergeneracional","prop_padrastros","prop_suegros","prop_nodos_aislados","prop_monoparental","prop_pareja_sin_hijos"
+"1",16,27676,0,0,0,0.75,0.4375,0
+"2",1,9009,0,0,0,0,0,1
+"3",4,14137,0,0,0,0,0,0
+"4",19,6107,0.684210526315789,0.368421052631579,0,0.0526315789473684,0,0
+"5",8,1778,0,0,1,0,0,0

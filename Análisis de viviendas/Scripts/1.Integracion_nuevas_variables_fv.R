@@ -2,7 +2,7 @@
 ###################### Social Network: encuesta CASEN ##########################
 ################################################################################
 ################################################################################
-############################ ESTADÍSTICOS REDES ################################
+############################ 1. ESTADÍSTICOS REDES ################################
 ################################################################################
 
 ###### LIBRERÍAS ######
@@ -238,4 +238,3 @@ if (!dir.exists("Análisis de viviendas/Descriptives")) {
 save(measurements, file = "Análisis de viviendas/Descriptives/medidas_redes.RData")
 
 load("Análisis de viviendas/Descriptives/medidas_redes.RData")
-

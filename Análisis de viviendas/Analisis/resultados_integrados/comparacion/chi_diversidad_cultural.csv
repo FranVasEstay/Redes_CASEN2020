@@ -1,0 +1,5 @@
+"variable","chi2","p_value","df","cramer_v"
+"income_cat",2764.15,"<2e-16",24,0.108
+"indigena",376.13,"<2e-16",6,0.08
+"rural",47.67,"3.57e-06",12,0.02
+"migrante",451.39,"<2e-16",6,0.088

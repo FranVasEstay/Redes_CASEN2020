@@ -1,7 +1,7 @@
 ################################################################################
 ###################### Social Network: encuesta CASEN ##########################
 ################################################################################
-########## VISUALIZACIÓN GÉNERO - JEFE DE HOGAR - PROMEDIO EDAD#################
+########## 6. VISUALIZACIÓN GÉNERO - JEFE DE HOGAR - PROMEDIO EDAD#################
 ################################################################################
 
 #Liberías
@@ -15,80 +15,60 @@ library(tibble)
 library(purrr)
 
 # Cargar datos de redes
-load("Análisis de viviendas/Data/fingerprints.RData") #Tiene fingerprints de cada data
-load("Análisis de viviendas/Redes/kinship_igraph_no_attrs.RData") # red SIN NINGÚN atributo
-load("Análisis de viviendas/Redes/kinship_igrpah.RData") #red con atributos
-households_por_tipologia <- readRDS("Análisis de viviendas/Analisis/Resultados_Tipologias/Reportes/households_por_tipologia.rds") # Tiene a las tipologías y una columna con los households que pertenecen a cada tipologpia separados por ";" 
+load("Análisis de viviendas/Data/fingerprints.RData") 
+load("Análisis de viviendas/Redes/kinship_igraph_no_attrs.RData") 
+load("Análisis de viviendas/Redes/kinship_igrpah.RData") 
+households_por_tipologia <- readRDS("Análisis de viviendas/Analisis/Resultados_Tipologias/Reportes/households_por_tipologia.rds")
 load("Análisis de viviendas/Data/Data_analisis.RData")
 load("Análisis de viviendas/Data/Data_con_tipología.RData")
-### Variables en la data ###
-# edad - edad numérico
-# sexo - sexo binario levels: 1(Hombre), 2(Mujer)
-# e6a  - nivel educativo: "¿Cuál es el nivel más alto alcanzado o el nivel educacional actual?", 17 labels de 1 "Nunca asistío" hasya 17 "Posgrado"
-# o1   - ¿trabajó la semana pasada? binario: 1(si), 2(no)
-# r1b_pais_esp - nacionalidad levels: 1(chileno), 2(extranjero), 3(no responde) 
-# ecivil - estado civil levels: 1 "Casado(a)" hasta 9 "No sabe\\No responde"
-# r3   - pueblo indígena levels:1-10 distintos pueblos indígenas, 11 - no pertenece a un pueblo indígena
-# s28  - ha estado en tratamiento médico (12 meses) levels: 1(si), 2(no), 3(No sabe/No recuerda)
-# comuna - comuna 
-# region - región 
-# ytotcor - Ingreso total del hogar numérico en pesos (CLP) 
-# edad_laboral - binaria: 1 (>=15 años), 2(<= 15 años)
-# edad_legal - binaria: 1 (>=18 años), 2(<= 18 años)
-# edad_dependencia_estudios - binaria: 1 (>=28 años), 2(<= 28 años)
-# pco1: parentesco con el jefe de hogar: 1 (Jefe de hogar)
 
-# Cargar tipologías válidas (ya filtradas previamente)
+# Cargar tipologías válidas
 tipologias_validas <- unique(households_por_tipologia$Tipologia)
 
 # Paso 3. Mostrar la tabla
 freq_table <- table(fingerprints)
 unique_fps <- names(sort(freq_table, decreasing = TRUE))
-tipologia_freq <- freq_table[unique_fps]  # Reordenamos la tabla
+tipologia_freq <- freq_table[unique_fps]
 total_redes <- sum(freq_table)
 tipologia_porcentaje <- round((freq_table / total_redes) * 100, 1)
-# 5. Guardar un grafo de ejemplo por tipología
+
+# Grafo de ejemplo por tipología
 examples <- lapply(unique_fps, function(fp) {
   idx <- which(fingerprints == fp)[1]
   kinship_igraph_no_attrs[[idx]]$kinship_net
 })
-names(examples) <- paste0("T", seq_along(unique_fps))  # Asignar nombres T1, T2, ...
+names(examples) <- paste0("T", seq_along(unique_fps))
 names(tipologia_porcentaje) <- names(examples)
-# Unir los datos para tener tipología + información individual
+
+# Unir datos completos
 datos_completos <- data_analisis %>%
   left_join(data_con_tipologia %>% select(household, tipologia), by = "household")
 
-######## Tabla de contingencia por tipología ###################################
-# Procesar las redes kinship para cada tipología
-convertir_id <- function(x) {
-  as.character(x)  # Convierte 1.1011e+11 → 110110000000
-}
-# Filtrar datos hasta la tipología T48
-datos_filtrados <- datos_completos %>% # Filtrar solo tipologías T1 a T48
-  filter(grepl("^T([1-9]|[1-3][0-9]|4[0-8])$", tipologia)) %>% # Convertir household a entero (para que coincida con las redes)
-  mutate(household = convertir_id(household)) %>% # Seleccionar solo las columnas necesarias y eliminar duplicados
+# Filtrar tipologías válidas
+convertir_id <- function(x) as.character(x)
+
+datos_filtrados <- datos_completos %>%
+  filter(grepl("^T([1-9]|[1-3][0-9]|4[0-8])$", tipologia)) %>%
+  mutate(household = convertir_id(household)) %>%
   distinct(household, tipologia)
 
-
 ids_redes <- data.frame(
-  indice = seq_along(kinship_igrpah),  # Índice de cada red en la lista
-  household_i = sapply(kinship_igrpah, function(x) convertir_id(x$household_i))  # IDs convertidos
-) #extraer los ids de las redes
-redes_con_tipologia <- ids_redes %>%
-  inner_join(
-    datos_filtrados,
-    by = c("household_i" = "household")  # Unir por ID
-  )
+  indice = seq_along(kinship_igrpah),
+  household_i = sapply(kinship_igrpah, function(x) convertir_id(x$household_i))
+)
 
-redes_por_tipologia <- redes_con_tipologia %>% #agrupar redes por tipología
+redes_con_tipologia <- ids_redes %>%
+  inner_join(datos_filtrados, by = c("household_i" = "household"))
+
+redes_por_tipologia <- redes_con_tipologia %>%
   group_by(tipologia) %>%
   summarise(
-    redes = list(kinship_igrpah[indice]),  # Lista de redes por tipología
-    households = list(household_i),        # IDs de households incluidos
-    indice = list(indice),  # indice
-    n_redes = n()                          # Conteo de redes por grupo
+    redes = list(kinship_igrpah[indice]),
+    households = list(household_i),
+    indice = list(indice),
+    n_redes = n()
   ) %>%
-  arrange(tipologia)  # Ordenar alfabéticamente (T1, T10, T11, ..., T2, T20, ...)
+  arrange(tipologia)
 head(redes_por_tipologia)
 
 # Ejemplo: Acceder a todas las redes de la tipología T1
@@ -253,7 +233,23 @@ draw_pie_at <- function(x, y, slices, radius, colors) {
   }
 }
 
-# Plot de jefatura y edad
+
+resumen_tipologias <- read.csv("Análisis de viviendas/Analisis/Resultados_Tipologias/Reportes/resumen_tipologias.csv")
+
+# Crear un named vector con porcentajes reales
+tipologia_porcentaje <- resumen_tipologias$Porcentaje
+names(tipologia_porcentaje) <- resumen_tipologias$Tipologia
+
+# ================================
+# ORDENAR TIPOS NUMÉRICAMENTE USANDO CSV
+# ================================
+tipologias_ordenadas <- resumen_tipologias %>%
+  arrange(as.numeric(gsub("T", "", Tipologia))) %>%
+  pull(Tipologia)
+
+# ================================
+# MODIFICAR EL PLOT PARA USAR PORCENTAJES REALES
+# ================================
 plot_nodos <- function(grafo, datos_nodo, datos_sexo, tipologia) {
   perm <- canonical_permutation(grafo)$labeling
   
@@ -275,22 +271,14 @@ plot_nodos <- function(grafo, datos_nodo, datos_sexo, tipologia) {
   V(grafo)$size <- scales::rescale(promedio_edad, to = c(15, 40))
   V(grafo)$frame.color <- "white"
   V(grafo)$label.cex <- 0.9
- # V(grafo)$label <- paste0(round(porcentaje_jefatura,1), "%")
   V(grafo)$label.color <- "black"
   
   lay <- layout_with_fr(grafo)
   
-  porcentajes_validos <- porcentaje_jefatura
-  porcentajes_validos[!is.finite(porcentajes_validos) | porcentajes_validos <= 0] <- 0
-  #radius_vals <- scales::rescale(porcentajes_validos, to = c(0.03, 0.07))
-  #radius_vals[porcentajes_validos == 0] <- 0.05
-  node_sizes <- scales::rescale(promedio_edad, to = c(15, 40))  # igual que vertex.size
-  max_size <- max(node_sizes)
-  min_radius <- 0.07
-  max_radius <- 0.1
+  node_sizes <- scales::rescale(promedio_edad, to = c(15, 40))
+  radius_vals <- scales::rescale(node_sizes, to = c(0.07, 0.1))
   
-  radius_vals <- scales::rescale(node_sizes, to = c(min_radius, max_radius))
-  
+  # 🔹 MODIFICACIÓN: usamos porcentajes reales del CSV
   plot(
     grafo,
     layout = lay,
@@ -298,7 +286,7 @@ plot_nodos <- function(grafo, datos_nodo, datos_sexo, tipologia) {
     xlim = range(lay[,1]) + c(-0.1, 0.1),
     ylim = range(lay[,2]) + c(-0.1, 0.1),
     main = paste0("Tipología ", tipologia, " (", tipologia_porcentaje[tipologia], "% de redes)"),
-    sub = paste("Proporción de jefatura (%), edad promedio (tamaño), y sexo (colores)"),
+    sub = "Proporción de jefatura (%), edad promedio (tamaño), y sexo (colores)",
     vertex.label.family = "sans"
   )
   
@@ -306,19 +294,15 @@ plot_nodos <- function(grafo, datos_nodo, datos_sexo, tipologia) {
     slices <- c(porcentaje_hombre[i], porcentaje_mujer[i])
     slices[is.na(slices)] <- 0
     if (sum(slices) == 0) slices <- c(1, 0)
-    
-    radius_val <- radius_vals[i]
-    
-    # Usar la función manual para dibujar la torta
     draw_pie_at(
       x = lay[i, 1],
       y = lay[i, 2],
       slices = slices,
-      radius = radius_val,
+      radius = radius_vals[i],
       colors = c("lightblue", "pink")
     )
   }
-  # Superponer etiquetas (porcentaje de jefatura)
+  
   for (i in seq_along(porcentaje_jefatura)) {
     text(
       x = lay[i, 1],
@@ -328,61 +312,25 @@ plot_nodos <- function(grafo, datos_nodo, datos_sexo, tipologia) {
       col = "black"
     )
   }
-  # Añadir simbología
+  
   legend(
     "bottomleft",
     legend = c("Hombres", "Mujeres"),
-    col = c("lightblue", "pink", NA, NA),
-    pt.bg = c("lightblue", "pink", NA, NA),
-    pch = c(21, 21, NA, NA),
-    pt.cex = c(2, 2, NA, NA),
+    col = c("lightblue", "pink"),
+    pt.bg = c("lightblue", "pink"),
+    pch = c(21, 21),
+    pt.cex = c(2, 2),
     bty = "n",
     text.col = "black"
   )
-  # Simular flechas de relaciones (matrimonio y filiación)
-  #x0 <- par("usr")[1] + 0.12
-  #y_base <- par("usr")[3] + 0.18
-  # Flecha verde - matrimonio
-  #arrows(
-  #  x0 = x0,
-  #  y0 = y_base + 0.05,
-  #  x1 = x0 + 0.05,
-  #  y1 = y_base + 0.05,
-  #  col = "darkgreen",
-  #  length = 0.1,
-  #  lwd = 2
-  #)
-  #text(
-  #  x = x0 + 0.06,
-  #  y = y_base + 0.05,
-  #  labels = "Matrimonio",
-  #  pos = 4,
-  #  cex = 0.8
-  #)
-  
-  # Flecha naranja - filiación
-  #arrows(
-  #  x0 = x0,
-  #  y0 = y_base - 0.02,
-  #  x1 = x0 + 0.05,
-  #  y1 = y_base - 0.02,
-  #  col = "orange",
-  #  length = 0.1,
-  #  lwd = 2
-  #)
- # text(
-  #  x = x0 + 0.06,
-  # y = y_base - 0.02,
-  #  labels = "Filiación",
-  #  pos = 4,
-  #  cex = 0.8
-  #)
 }
 
-# Crear PDF con todas las tipologías
+# ================================
+# RECORRER TIPOS ORDENADOS CON PORCENTAJES REALES
+# ================================
 pdf("Análisis de viviendas/Analisis/Resultados_Tipologias/Graficos/Jefatura_edad_sexo_por_nodo.pdf", width = 10, height = 8)
 
-for (tip in names(jefatura_por_nodo)) {
+for (tip in tipologias_ordenadas) {
   g <- examples[[tip]]
   datos_jefatura <- jefatura_por_nodo[[tip]]
   datos_edad <- edad_por_nodo[[tip]]

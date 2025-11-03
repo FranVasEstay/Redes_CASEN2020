@@ -1,0 +1,505 @@
+---
+title: "Resumen de análisis de tipologías"
+author: "Francisca Vasquez Estay"
+date: "2025-09-08"
+output: html_document
+editor_options: 
+  markdown: 
+    wrap: 72
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE, warning = FALSE, message = FALSE)
+library(igraph)
+library(ggplot2)
+library(dplyr)
+library(tidyr)
+library(patchwork)
+library(FactoMineR)
+library(factoextra)
+library(vcd)
+library(ggrepel)
+load("Análisis de viviendas/Data/Data_analisis.RData")
+load("Análisis de viviendas/Data/Data_con_tipología.RData")
+load("Análisis de viviendas/Data/data_macrotiplogias.RData")
+```
+
+## Descripción general
+
+Este proyecto analiza las estructuras de redes de parentesco (kinship
+networks) derivadas de la encuesta CASEN 2020 de Chile. El objetivo
+principal es identificar tipologías estructurales en las redes
+familiares y examinar su relación con variables sociodemográficas como
+ingresos, ubicación geográfica, composición étnica y género.
+
+
+## Flujo de análisis
+
+### 1. Preparación de los Datos (1.Integracion_nuevas_variables_fv.R)
+
+-   Carga y limpieza de datos originales de CASEN 2020
+
+-   Creación de variables derivadas (edad laboral, legal, etc.)
+-   Filtrado de viviendas con IDs duplicados
+-   Cálculo de estadísticos descriptivos por hogar (household):
+    -   Porcentaje de hombres/mujeres
+    -   Porcentaje de población indígena
+    -   Porcentaje de empleo
+    -   Porcentaje con enfermedades crónicas
+    -   Ingreso promedio del hogar
+    -   Edad promedio y desviación estándar
+```{r measurments, eval=FALSE}
+# measurements
+load("Análisis de viviendas/Descriptives/medidas_redes.RData")
+head(measurements)
+```
+
+### 2. Procesamiento de Redes (2.Redes_sin_atributos.R)
+
+-   Eliminación de atributos de nodos en cuatro tipos de redes:
+    -   Redes de descendencia (descent)
+    -   Redes de matrimonio (marriage)
+    -   Redes de dependencia (dependency)
+    -   Redes de parentesco completo (kinship)
+-   Preparación de redes para análisis estructural puro
+
+### 3. Identificación de tipologías (3.Redes_sin_atributos_visualizacion.R)
+
+-   Cálculo de "huellas digitales" estructurales (fingerprints) para
+    cada red
+-   Agrupamiento de redes por similitud estructural
+-   Identificación de las 48 tipologías más frecuentes (que cubren \~80%
+    de los casos)
+
+```{r tipologias_frecuencia, fig.height=6, fig.width=10}
+# Cargar datos de frecuencia de tipologías
+tipologia_df <- read.csv("Análisis de viviendas/Analisis/Resultados_Tipologias/Reportes/resumen_tipologias.csv")
+
+# Filtrar solo T1 a T48
+tipologia_df <- tipologia_df %>%
+  filter(Tipologia %in% paste0("T", 1:48)) %>%
+  mutate(Tipologia = factor(Tipologia, levels = paste0("T", 1:48)))
+
+# Gráfico de frecuencia de tipologías
+ggplot(tipologia_df, aes(x = Tipologia, y = Frecuencia)) +
+  geom_col(fill = "steelblue", alpha = 0.8) +
+  geom_text(aes(label = Frecuencia), vjust = -0.5, size = 3) +
+  labs(title = "Frecuencia de tipologías estructurales identificadas (T1-T48)",
+       x = "Tipología", y = "Número de hogares") +
+  theme_minimal() +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1))
+```
+
+-   Visualización de ejemplos representativos de cada tipología
+```{r ejemplos_redes, fig.height=8, fig.width=12, eval=FALSE}
+# Cargar ejemplos de redes (ejecutar previamente)
+load("Análisis de viviendas/Redes/kinship_igraph_no_attrs.RData")
+load("Análisis de viviendas/Data/fingerprints.RData")
+
+# Obtener ejemplos de las 6 tipologías más frecuentes
+freq_table <- table(fingerprints)
+unique_fps <- names(sort(freq_table, decreasing = TRUE))
+examples <- lapply(unique_fps[1:6], function(fp) {
+  idx <- which(fingerprints == fp)[1]
+  kinship_igraph_no_attrs[[idx]]$kinship_net
+})
+
+# Configurar layout para múltiples gráficos
+par(mfrow = c(2, 3), mar = c(1, 1, 2, 1))
+
+for (i in 1:6) {
+  plot(examples[[i]], 
+       main = paste("Tipología T", i, "\nFrecuencia:", freq_table[unique_fps[i]]),
+       vertex.size = 15,
+       vertex.color = "lightblue",
+       vertex.frame.color = "white",
+       vertex.label.color = "black",
+       edge.arrow.size = 0.5,
+       layout = layout_with_fr)
+}
+```
+-   Análisis de puntos de quiebre para determinar tipologías
+    significativas
+
+### 4. Descripción de tipologías (4.Descripción_tipologías.R)
+
+Caracterización sociodemográfica de cada tipología: 
+- Edad y género del jefe de hogar 
+- Distribución urbano/rural y por macrozonas 
+- Composición étnica (porcentaje indígena y extranjero) 
+- Distribución de ingresos por quintiles
+
+```{r caracterizacion_tipologias, fig.height=7, fig.width=12}
+load("Análisis de viviendas/Data/Data_con_tipología.RData")
+
+# Filtrar solo T1 a T48 y ordenar
+data_con_tipologia <- data_con_tipologia %>%
+  filter(tipologia %in% paste0("T", 1:48)) %>%
+  mutate(tipologia = factor(tipologia, levels = paste0("T", 1:48)))
+
+# Gráfico de edad promedio por tipología
+p1 <- ggplot(data_con_tipologia, aes(x = tipologia, y = edad.prom)) +
+  geom_boxplot(fill = "lightgreen", alpha = 0.7) +
+  labs(title = "Edad promedio por tipología", x = "Tipología", y = "Edad promedio") +
+  theme_minimal() +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1))
+
+# Gráfico de porcentaje indígena por tipología
+p2 <- ggplot(data_con_tipologia, aes(x = tipologia, y = porc_ind)) +
+  geom_boxplot(fill = "lightcoral", alpha = 0.7) +
+  labs(title = "Porcentaje indígena por tipología", x = "Tipología", y = "% Indígena") +
+  theme_minimal() +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1))
+
+# Combinar gráficos
+p1 / p2
+```
+### 5. Análisis Estadístico de Tipologías (5.Análisis_de_tipologias_frecuentes.R)
+
+-   Pruebas de chi-cuadrado para evaluar asociaciones entre tipologías y
+    variables categóricas.
+-   Gráficos mosaico para visualizar asociaciones.
+-   Heatmaps de significancia estadística.
+    ```{r chi_cuadrado, fig.height=6, fig.width=10}
+# Heatmap de significancia estadística
+resultados_chi <- read.csv("Análisis de viviendas/Analisis/resultados_chi_tipologias.csv")
+
+ggplot(resultados_chi, aes(x = Tipologia, y = Variable, fill = p_value < 0.05)) +
+  geom_tile(color = "white") +
+  geom_text(aes(label = round(Chi2, 2)), size = 3,angle = 90, color = "black") +
+  scale_fill_manual(values = c("TRUE" = "steelblue", "FALSE" = "gray90"),
+                    name = "Significativo\n(p < 0.05)") +
+  labs(title = "Significancia estadística (Chi²) por tipología y variable",
+       x = "Tipología", y = "Variable") +
+  theme_minimal() +
+  theme(axis.text.x = element_text(angle = 90, hjust = 1))
+```
+
+### 6. Visualización de roles Familiares (6.Visualización_jefe_de_hogar.R)
+
+-   Análisis de la posición del jefe de hogar en cada tipología
+    estructural
+-   Distribución de género por posición estructural
+-   Edad promedio por nodo en la estructura familiar
+-   Visualización integrada de: porcentaje de jefatura, edad promedio y
+    distribución de género
+```{r jefatura_estructura, fig.height=7, fig.width=10, eval=FALSE}
+# Cargar y procesar datos de jefatura (ejecutar previamente)
+# Este análisis requiere procesamiento específico mostrado en el script 6
+
+# Visualización conceptual de cómo varía la jefatura según posición estructural
+# (Los datos reales requieren procesamiento complejo de permutaciones canónicas)
+
+# Gráfico conceptual
+conceptual_data <- data.frame(
+  Posicion = c("Central", "Periférica", "Intermedia", "Aislada"),
+  Porcentaje_Jefatura = c(85, 15, 45, 5)
+)
+
+ggplot(conceptual_data, aes(x = Posicion, y = Porcentaje_Jefatura)) +
+  geom_col(fill = "steelblue", alpha = 0.8) +
+  labs(title = "Porcentaje de jefatura según posición estructural (conceptual)",
+       x = "Posición estructural en la red", y = "% de casos como jefe de hogar") +
+  theme_minimal()
+```
+### 7. Clasificación de Tipologías (7.Clasificacion_tipologias.R)
+
+Desarrollo de algoritmo para clasificar tipologías en macrogrupos
+familiares: 
+
+- Intergeneracional (abuelo-padre-hijo) 
+- Familias con padrastros/madrastras 
+- Presencia de suegros 
+- Nodos aislados 
+- Estructuras monoparentales 
+- Parejas sin hijos
+
+Asignación de macrogrupos: 
+- Nuclear tradicional 
+- Monoparental 
+- Reconstituida 
+- Intergeneracional 
+- Extendida 
+- Aislada 
+- Pareja sin hijos
+
+```{r macrogrupos, fig.height=6, fig.width=10}
+# Distribución de macrogrupos
+macro_freq <- data_macro %>%
+  distinct(household, .keep_all = TRUE) %>%
+  count(macrogrupo) %>%
+  mutate(percent = n/sum(n)*100)
+
+ggplot(macro_freq, aes(x = reorder(macrogrupo, -n), y = n)) +
+  geom_col(fill = "steelblue", alpha = 0.8) +
+  geom_text(aes(label = paste0(round(percent,1), "%")), vjust = -0.5) +
+  labs(title = "Distribución de macrogrupos familiares",
+       x = "Macrogrupo", y = "Número de hogares") +
+  theme_minimal()
+```
+### 8. Análisis de Macrotipologías (8.Analisis_macrotipologias.R)
+
+Caracterización demográfica de los macrogrupos
+
+Análisis de ingresos por macrogrupo
+
+```{r ingresos_macrogrupo, fig.height=6, fig.width=10}
+# Gráfico de distribución de ingresos por macrogrupo
+ggplot(data_macro, aes(x = sueldo_cat, fill = macrogrupo)) +
+  geom_bar(position = "fill") +
+  scale_y_continuous(labels = scales::percent) +
+  labs(title = "Distribución de ingresos por macrogrupo familiar",
+       x = "Quintil de ingreso", y = "Porcentaje") +
+  scale_fill_brewer(palette = "Set2", name = "Macrogrupo") +
+  theme_minimal()
+```
+
+
+Porcentaje indígena por macrogrupo
+```{r indigena_macrogrupo, fig.height=6, fig.width=10}
+load("Análisis de viviendas/Data/data_macrotiplogias.RData")
+ggplot(data_macro, aes(x = macrogrupo, fill = factor(ifelse(porc_ind > 50, "Mayoría indígena", "Minoría indígena")))) +
+  geom_bar(position = "fill") +
+  scale_y_continuous(labels = scales::percent) +
+  labs(title = "Distribución de composición indígena por macrogrupo",
+       x = "Macrogrupo", y = "Porcentaje",
+       fill = "Composición indígena") +
+  scale_fill_manual(values = c("Mayoría indígena" = "darkgreen", "Minoría indígena" = "lightgreen")) +
+  theme_minimal() +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1))
+```
+
+
+Porcentaje de rural/urbano por macrogrupo
+```{r rural_macrogrupo, fig.height=6, fig.width=10}
+load("Análisis de viviendas/Data/data_macrotiplogias.RData")
+# Porcentaje rural por macrogrupo
+ggplot(data_macro, aes(x = macrogrupo, fill = rural_cat)) +
+  geom_bar(position = "fill") +
+  scale_y_continuous(labels = scales::percent) +
+  labs(title = "Distribución de ruralidad por macrogrupo",
+       x = "Macrogrupo", y = "Porcentaje",
+       fill = "Grado de ruralidad") +
+  scale_fill_brewer(palette = "Oranges") +
+  theme_minimal() +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1))
+```
+
+
+### 9. Análisis Estadístico de Macrotipologías (9.Chi2_macrotipologias.R)
+
+Pruebas de chi-cuadrado entre macrogrupos y variables categóricas: -
+Región - Ruralidad - Nivel de ingresos
+```{r chi_macrogrupo}
+# Pruebas de chi-cuadrado entre macrogrupos y variables categóricas
+chi_test_macrogroups <- function(data, test_var) {
+  # Crear tabla de contingencia
+  tbl <- table(data$macrogrupo, data[[test_var]])
+  
+  # Realizar prueba chi-cuadrado
+  chi_test <- chisq.test(tbl)
+  
+  # Calcular residuos estandarizados
+  std_res <- as.data.frame(chi_test$stdres)
+  names(std_res) <- c("macrogrupo", test_var, "std_residual")
+  
+  # Calcular V de Cramer
+  cramer_v <- sqrt(chi_test$statistic / (sum(tbl) * (min(dim(tbl)) - 1)))
+  
+  return(list(
+    test = chi_test,
+    residuals = std_res,
+    cramer_v = cramer_v
+  ))
+}
+
+# Ejecutar pruebas para variables clave
+chi_results <- list(
+  region = chi_test_macrogroups(data_macro, "region"),
+  rural = chi_test_macrogroups(data_macro, "rural_cat"),
+  income = chi_test_macrogroups(data_macro, "sueldo_cat")
+)
+
+# Heatmap de significancia estadística
+chi_summary <- data.frame(
+  Variable = c("region", "rural", "income"),
+  Chi2 = c(chi_results$region$test$statistic,
+           chi_results$rural$test$statistic,
+           chi_results$income$test$statistic),
+  p_value = c(chi_results$region$test$p.value,
+              chi_results$rural$test$p.value,
+              chi_results$income$test$p.value),
+  Cramer_V = c(chi_results$region$cramer_v,
+               chi_results$rural$cramer_v,
+               chi_results$income$cramer_v)
+)
+
+ggplot(chi_summary, aes(x = Variable, y = "Macrogrupos", fill = p_value < 0.05)) +
+  geom_tile(color = "white", width = 0.9, height = 0.9) +
+  geom_text(aes(label = paste0("χ²=", round(Chi2, 2), 
+                               "\np=", round(p_value, 4),
+                               "\nV=", round(Cramer_V, 3))),
+            color = "black", size = 3.5, lineheight = 0.8) +
+  scale_fill_manual(values = c("TRUE" = "steelblue", "FALSE" = "gray90"),
+                    name = "Significativo\n(p < 0.05)") +
+  labs(title = "Significancia estadística (Chi²) - Macrogrupos vs Variables",
+       x = "Variable", y = "") +
+  theme_minimal() +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1),
+        panel.grid = element_blank())
+```
+
+Heatmaps de significancia estadística
+```{r heat_macro}
+# Crear dataframe con resultados de chi-cuadrado para macrogrupos
+chi_macrogrupos <- data.frame(
+  Macrogrupo = rep(unique(data_macro$macrogrupo), each = 3),
+  Variable = rep(c("region", "rural_cat", "sueldo_cat"), times = length(unique(data_macro$macrogrupo))),
+  Chi2 = NA,
+  p_value = NA,
+  Cramer_V = NA
+)
+
+# Calcular pruebas chi-cuadrado para cada combinación macrogrupo-variable
+for(i in 1:nrow(chi_macrogrupos)) {
+  macrogrupo_sel <- chi_macrogrupos$Macrogrupo[i]
+  variable_sel <- chi_macrogrupos$Variable[i]
+  
+  # Filtrar datos para el macrogrupo específico vs otros
+  datos_filtrados <- data_macro %>%
+    mutate(grupo = ifelse(macrogrupo == macrogrupo_sel, macrogrupo_sel, "Otros")) %>%
+    filter(!is.na(.data[[variable_sel]]))
+  
+  # Crear tabla de contingencia
+  tbl <- table(datos_filtrados[[variable_sel]], datos_filtrados$grupo)
+  
+  # Realizar prueba chi-cuadrado (suprimir warnings por valores esperados bajos)
+  chi_test <- suppressWarnings(chisq.test(tbl))
+  
+  # Calcular V de Cramer
+  cramer_v <- sqrt(chi_test$statistic / (sum(tbl) * (min(dim(tbl)) - 1)))
+  
+  # Almacenar resultados
+  chi_macrogrupos$Chi2[i] <- as.numeric(chi_test$statistic)
+  chi_macrogrupos$p_value[i] <- chi_test$p.value
+  chi_macrogrupos$Cramer_V[i] <- cramer_v
+}
+
+# Heatmap de significancia estadística para macrogrupos
+ggplot(chi_macrogrupos, aes(x = Macrogrupo, y = Variable, fill = p_value < 0.05)) +
+  geom_tile(color = "white") +
+  geom_text(aes(label = round(Chi2, 2)), size = 3, angle = 90, color = "black") +
+  scale_fill_manual(values = c("TRUE" = "steelblue", "FALSE" = "gray90"),
+                    name = "Significativo\n(p < 0.05)") +
+  labs(title = "Significancia estadística (Chi²) por Macrogrupo y Variable",
+       subtitle = "Comparación de cada macrogrupo vs todos los demás",
+       x = "Macrogrupo", y = "Variable") +
+  theme_minimal() +
+  theme(axis.text.x = element_text(angle = 90, hjust = 1))
+```
+
+Visualización de residuos estandarizados
+
+Gráficos mosaico para asociaciones
+
+### 10. Análisis de Correspondencias Múltiples (10.MCA_macrotipologias.R)
+
+Análisis de correspondencias múltiples (MCA) para visualizar relaciones
+entre: 
+- Macrogrupos familiares 
+- Zonas geográficas (Norte, Centro, Sur) 
+- Grado de ruralidad 
+- Nivel de ingresos 
+- Visualización de la distribución de hogares en el espacio multivariado 
+- Análisis de centroides y elipses de confianza
+```{r mca_analysis, fig.height=8, fig.width=12}
+# Preparar datos para MCA
+mca_data <- data_macro %>%
+  select(macrogrupo, zona, rural_cat, sueldo_cat) %>%
+  mutate(across(everything(), as.factor))
+
+# Ejecutar MCA
+mca_result <- MCA(mca_data, quali.sup = 1, ncp = 5, graph = FALSE)
+
+# Visualizar variables activas
+fviz_mca_var(mca_result, repel = TRUE, ggtheme = theme_minimal(),
+             title = "Análisis de Correspondencias Múltiples - Variables activas")
+
+# Visualizar macrogrupos como variable suplementaria
+fviz_mca_ind(mca_result, habillage = "macrogrupo", addEllipses = TRUE,
+             ggtheme = theme_minimal(), 
+             title = "Distribución de hogares por macrogrupo en el espacio MCA")
+```
+```{r mca_categorias, fig.height=8, fig.width=12}
+# Gráfico por categorías
+coords <- as.data.frame(mca_result$ind$coord)
+colnames(coords) <- gsub(" ", "_", colnames(coords))
+
+coords <- coords %>%
+  mutate(
+    zona = mca_data$zona,
+    rural_cat = mca_data$rural_cat,
+    sueldo_cat = mca_data$sueldo_cat
+  )
+
+# Gráfico con tres leyendas visibles
+ggplot(coords, aes(x = Dim_1, y = Dim_2)) +
+  
+  # Puntos coloreados por zona
+  geom_point(aes(color = zona), alpha = 0.4, size = 2) +
+  
+  # Elipses por zona
+  stat_ellipse(aes(color = zona), level = 0.95, linewidth = 1) +
+  
+  # Diferenciar forma según ruralidad
+  geom_point(aes(shape = rural_cat), size = 3, alpha = 0.5) +
+  
+  # Contorno según sueldo
+  geom_point(aes(fill = sueldo_cat), shape = 21, size = 2, color = "black", alpha = 0.5) +
+  
+  # Tema limpio
+  theme_minimal() +
+  
+  labs(
+    title = "Representación de hogares por categoría",
+    x = "Dimensión 1",
+    y = "Dimensión 2",
+    color = "Zona",
+    shape = "Ruralidad",
+    fill = "Sueldo"
+  ) +
+  
+  guides(
+    color = guide_legend(override.aes = list(size = 4, alpha = 1)),
+    shape = guide_legend(override.aes = list(size = 4, alpha = 1)),
+    fill = guide_legend(override.aes = list(size = 4, alpha = 1))
+  )
+```
+
+## Hallazgos Principales
+
+Diversidad Estructural: Se identificaron 48 tipologías estructurales
+distintas en las redes de parentesco, con las 6 primeras representando
+más del 50% de los hogares.
+
+Patrones Sociodemográficos: Las tipologías muestran asociaciones
+significativas con variables como:
+
+-   Composición étnica del hogar
+-   Distribución geográfica (región y ruralidad)
+-   Nivel de ingresos
+
+Macrogrupos Familiares: Las estructuras familiares se pueden agrupar en
+7 macrocategorías con características distintivas:
+
+-   Nuclear tradicional (predominante)
+-   Monoparental
+-   Reconstituida (con padrastros/madrastras)
+-   Intergeneracional (tres generaciones)
+-   Extendida (incluye suegros u otros familiares)
+-   Aislada (nodos desconectados)
+-   Pareja sin hijos
+
+Distribución Geográfica: 
+
+Desigualdades Socioeconómicas: 

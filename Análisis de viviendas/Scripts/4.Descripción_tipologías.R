@@ -1,7 +1,7 @@
 ################################################################################
 ###################### Social Network: encuesta CASEN ##########################
 ################################################################################
-#######################Buscar estructuras de las redes##########################
+#######################4. Buscar estructuras de las redes##########################
 ################################################################################
 #Este script describe las tipologías de las redes creadas a partir de la encuesta CASEN#
 
@@ -50,14 +50,11 @@ ubicacion_stats <- datos_completos_T48 %>%
   mutate(
     area = ifelse(porc_rural > 50, "Rural", "Urbano"),
     macrozona = case_when(
-      region %in% c("Región de Arica y Parinacota", "Región de Tarapacá", 
-                    "Región de Antofagasta") ~ "Norte",
-      region %in% c("Región de Atacama","Región de Coquimbo") ~ "Norte Chico",
+      region %in% c("Región de Arica y Parinacota", "Región de Tarapacá","Región de Antofagasta","Región de Atacama","Región de Coquimbo") ~ "Norte",
       region %in% c("Región de Valparaíso","Región Metropolitana de Santiago","Región del Libertador Gral. Bernardo O'Higgins", 
                     "Región del Maule", "Región de Ñuble") ~ "Centro",
       region %in% c("Región del Biobío", "Región de La Araucanía", 
-                    "Región de Los Ríos", "Región de Los Lagos") ~ "Sur",
-      region %in% c("Región de Aysén del Gral. Carlos Ibáñez del Campo", "Región de Magallanes y de la Antártica Chilena") ~ "Austral",
+                    "Región de Los Ríos", "Región de Los Lagos","Región de Aysén del Gral. Carlos Ibáñez del Campo", "Región de Magallanes y de la Antártica Chilena") ~ "Sur",
       TRUE ~ "Otra"
     )
   ) %>%
@@ -69,10 +66,8 @@ ubicacion_stats <- datos_completos_T48 %>%
     
     # 2. Porcentaje por macrozona DENTRO de cada tipología
     "%_Norte" = round(mean(macrozona == "Norte", na.rm = TRUE) * 100, 1),
-    "%_Norte_chico" = round(mean(macrozona == "Norte Chico", na.rm = TRUE) * 100, 1),
     "%_Centro" = round(mean(macrozona == "Centro", na.rm = TRUE) * 100, 1),
-    "%_Sur" = round(mean(macrozona == "Sur", na.rm = TRUE) * 100, 1),
-    "%_Austral" = round(mean(macrozona == "Austral", na.rm = TRUE) * 100, 1)
+    "%_Sur" = round(mean(macrozona == "Sur", na.rm = TRUE) * 100, 1)
   )
 
 # --------------------------------------------
@@ -81,7 +76,7 @@ ubicacion_stats <- datos_completos_T48 %>%
 # Este cuenta a las personas extranjeras en la tipología
 # Mide la composición demográfica general de cada tipología. (Foco demográfico)
 # No distingue si los extranjeros están concentrados en pocas viviendas o distribuidos homogéneamente
-# Puede sobrestimar la influencia en hogares donde solo 1 miembro de por ejemplo 5 sea extranjero
+# Puede sobrestimar la influencia en hogares donde solo 1 miembro de por ejemplo 5 sea extranjeros
 origen_stats <- datos_completos_T48 %>% 
   group_by(tipologia) %>%
   summarise(
@@ -137,7 +132,32 @@ tabla_final <- edad_stats %>%
   left_join(ubicacion_stats, by = "tipologia") %>%
   left_join(origen_stats, by = "tipologia") %>%
   left_join(origen_stats_2, by = "tipologia") %>%
-  left_join(ingresos, by = "tipologia")
+  left_join(ingresos, by = "tipologia") %>%
+  mutate(tipologia = factor(tipologia, 
+                            levels = paste0("T", 1:48),
+                            ordered = TRUE)) %>%
+  # Ordenar por tipologia
+  arrange(tipologia)
 # Mostrar tabla
-print(tabla_final)
 View(tabla_final)
+# Guardar
+write.csv(tabla_final, "Análisis de viviendas/Analisis/descriptives_tipologias.csv", row.names = FALSE, fileEncoding = "UTF-8")
+# Análisis para variables específicas
+analisis_completo <- tabla_final %>%
+  # Seleccionar variables numéricas (ajusta según tus columnas)
+  select(tipologia, where(is.numeric)) %>%
+  pivot_longer(
+    cols = -tipologia,
+    names_to = "variable",
+    values_to = "valor"
+  ) %>%
+  group_by(variable) %>%
+  summarise(
+    max_tipologia = tipologia[which.max(valor)],
+    max_valor = max(valor, na.rm = TRUE),
+    min_tipologia = tipologia[which.min(valor)],
+    min_valor = min(valor, na.rm = TRUE),
+    .groups = 'drop'
+  )
+
+Publish::publish(analisis_completo)

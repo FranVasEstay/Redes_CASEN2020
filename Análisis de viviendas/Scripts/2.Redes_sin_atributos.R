@@ -2,7 +2,7 @@
 ###################### Social Network: encuesta CASEN ##########################
 ################################################################################
 ################################################################################
-######################## REDES SIN VAR EN LOS NODOS ############################
+######################## 2. REDES SIN VAR EN LOS NODOS ############################
 ################################################################################
 
 ###### LIBRERÍAS ######
@@ -143,5 +143,3 @@ kinship_igraph_no_attrs <- lapply(kinship_igrpah, function(network) {
 
 # Guardar la lista de redes sin atributos
 save(kinship_igraph_no_attrs, file = "Análisis de viviendas/Redes/kinship_igraph_no_attrs.RData")
-
-

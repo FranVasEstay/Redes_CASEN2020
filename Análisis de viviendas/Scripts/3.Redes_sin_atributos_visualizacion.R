@@ -1,7 +1,7 @@
 ################################################################################
 ###################### Social Network: encuesta CASEN ##########################
 ################################################################################
-#######################Buscar estructuras de las redes##########################
+#######################3. Buscar estructuras de las redes##########################
 ################################################################################
 #Este script crea tipologías de las redes creadas a partir de la encuesta CASEN#
 #Para crear estas tipologías primeramente quitamos los atributos de las redes kinship creadas anteriormente con el fin de ver únicamente su estructura y luego calcular la frecuencia de esa estructura en la lista de redes kinship#
