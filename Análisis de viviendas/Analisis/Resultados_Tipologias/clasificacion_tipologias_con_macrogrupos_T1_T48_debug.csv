@@ -1,0 +1,49 @@
+"Tipologia","Vertices","Aristas","marriage_edges","descent_edges","macrogrupo_original","macrogrupo","subgrupo_otros","intergeneracional","padrastros","suegros","nodos_aislados","monoparental","pareja_sin_hijos"
+"T1",1,0,0,0,"Aislada","Aislada",NA,0,0,0,1,0,0
+"T2",2,2,2,0,"Pareja sin hijos","Pareja sin hijos","Reconstituida",0,1,0,0,0,1
+"T3",3,4,2,2,"Reconstituida","Otros","Reconstituida",0,1,0,0,0,0
+"T4",2,1,0,1,"Monoparental","Monoparental",NA,0,0,0,0,1,0
+"T5",4,6,2,4,"Reconstituida","Otros","Reconstituida",0,1,0,0,0,0
+"T6",3,2,0,2,"Monoparental","Monoparental",NA,0,0,0,0,1,0
+"T7",5,8,2,6,"Reconstituida","Otros","Reconstituida",0,1,0,0,0,0
+"T8",2,0,0,0,"Aislada","Aislada",NA,0,0,0,1,0,0
+"T9",4,3,0,3,"Monoparental","Monoparental",NA,0,0,0,0,1,0
+"T10",3,2,0,2,"Intergeneracional","Otros","Intergeneracional",1,0,0,0,0,0
+"T11",3,2,2,0,"Reconstituida","Otros","Reconstituida; Extendida",0,1,0,1,0,0
+"T12",3,3,2,1,"Reconstituida","Otros","Reconstituida",0,1,0,0,0,0
+"T13",3,1,0,1,"Monoparental","Monoparental","Extendida",0,0,0,1,1,0
+"T14",4,5,2,3,"Reconstituida","Otros","Reconstituida",0,1,0,0,0,0
+"T15",4,5,2,3,"Intergeneracional","Otros","Intergeneracional; Reconstituida",1,1,0,0,0,0
+"T16",4,4,2,2,"Reconstituida","Otros","Reconstituida; Extendida",0,1,0,1,0,0
+"T17",4,3,0,3,"Intergeneracional","Otros","Intergeneracional",1,0,0,0,0,0
+"T18",4,5,2,3,"Intergeneracional","Otros","Intergeneracional; Reconstituida; Extendida",1,1,1,0,0,0
+"T19",4,3,0,3,"Intergeneracional","Otros","Intergeneracional",1,0,0,0,0,0
+"T20",3,3,2,1,"Reconstituida","Otros","Reconstituida; Extendida",0,1,1,0,0,0
+"T21",3,0,0,0,"Aislada","Aislada",NA,0,0,0,1,0,0
+"T22",5,7,2,5,"Intergeneracional","Otros","Intergeneracional; Reconstituida",1,1,0,0,0,0
+"T23",5,7,2,5,"Intergeneracional","Otros","Intergeneracional; Reconstituida; Extendida",1,1,1,0,0,0
+"T24",6,10,2,8,"Reconstituida","Otros","Reconstituida",0,1,0,0,0,0
+"T25",4,4,2,2,"Reconstituida","Otros","Reconstituida",0,1,0,0,0,0
+"T26",4,2,0,2,"Monoparental","Monoparental","Extendida",0,0,0,1,1,0
+"T27",5,4,0,4,"Monoparental","Monoparental",NA,0,0,0,0,1,0
+"T28",5,7,2,5,"Reconstituida","Otros","Reconstituida",0,1,0,0,0,0
+"T29",5,6,2,4,"Reconstituida","Otros","Reconstituida; Extendida",0,1,0,1,0,0
+"T30",4,2,2,0,"Reconstituida","Otros","Reconstituida; Extendida",0,1,0,1,0,0
+"T31",5,6,2,4,"Intergeneracional","Otros","Intergeneracional; Reconstituida",1,1,0,0,0,0
+"T32",5,4,0,4,"Intergeneracional","Otros","Intergeneracional",1,0,0,0,0,0
+"T33",4,1,0,1,"Monoparental","Monoparental","Extendida",0,0,0,1,1,0
+"T34",5,8,4,4,"Intergeneracional","Otros","Intergeneracional; Reconstituida; Extendida",1,1,1,0,0,0
+"T35",4,6,4,2,"Reconstituida","Otros","Reconstituida; Extendida",0,1,1,0,0,0
+"T36",5,4,0,4,"Intergeneracional","Otros","Intergeneracional",1,0,0,0,0,0
+"T37",5,6,2,4,"Reconstituida","Otros","Reconstituida",0,1,0,0,0,0
+"T38",5,4,0,4,"Intergeneracional","Otros","Intergeneracional",1,0,0,0,0,0
+"T39",6,9,2,7,"Intergeneracional","Otros","Intergeneracional; Reconstituida; Extendida",1,1,1,0,0,0
+"T40",6,10,4,6,"Intergeneracional","Otros","Intergeneracional; Reconstituida; Extendida",1,1,1,0,0,0
+"T41",4,2,0,2,"Intergeneracional","Otros","Intergeneracional; Extendida",1,0,0,1,0,0
+"T42",6,9,2,7,"Intergeneracional","Otros","Intergeneracional; Reconstituida",1,1,0,0,0,0
+"T43",6,8,2,6,"Reconstituida","Otros","Reconstituida; Extendida",0,1,0,1,0,0
+"T44",6,10,4,6,"Intergeneracional","Otros","Intergeneracional; Reconstituida; Extendida",1,1,1,0,0,0
+"T45",4,0,0,0,"Aislada","Aislada",NA,0,0,0,1,0,0
+"T46",5,5,2,3,"Reconstituida","Otros","Reconstituida",0,1,0,0,0,0
+"T47",6,8,2,6,"Intergeneracional","Otros","Intergeneracional; Reconstituida",1,1,0,0,0,0
+"T48",4,4,2,2,"Intergeneracional","Otros","Intergeneracional; Reconstituida",1,1,0,0,0,0

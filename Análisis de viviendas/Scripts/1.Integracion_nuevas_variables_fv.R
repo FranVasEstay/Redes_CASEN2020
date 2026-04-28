@@ -111,10 +111,12 @@ data_analisis <- data_analisis %>%
       TRUE ~ 2
     ) %>% factor(levels = c(1, 2), labels = c("Chileno", "Extranjero")),
     s28 = case_when(
-      as.numeric(s28) %in% c(2, 22) ~ 1,
-      as.numeric(s28) == 99 ~ NA,
-      TRUE ~ 2
-    ) %>% factor(levels = c(1, 2), labels = c("Sin enfermedad crónica", "Enfermedad crónica"))
+      as.numeric(s28) == 1  ~ 1,
+      as.numeric(s28) == 2  ~ 0,
+      as.numeric(s28) == 3  ~ NA_integer_,
+      is.na(s28)            ~ NA_integer_,
+      TRUE                  ~ NA_integer_
+    ) %>% factor(levels = c(0, 1), labels = c("Sin enfermedad crónica", "Enfermedad crónica"))
   )
 
 # Orden geográfico de regiones (según manual, pág. 171)
@@ -164,11 +166,6 @@ load("Análisis de viviendas/Data/Data.RData")
 ######################### CALCULO DE ESTADISTICOS ##############################
 ### Crear listas y data frame vacios para recopilar información 
 measurements <- data.frame()
-
-ncores <- detectCores() - 1
-cl <- parallel::makeCluster(ncores)
-registerDoParallel(cl)
-options("tryCatchLog.write.error.dump.file" = TRUE)
 
 resultados_list <- list()
 
@@ -232,14 +229,13 @@ for (i in unique(data_analisis$household)) {
     pobreza_hogar <- unique(vivienda_i$pobreza[!is.na(vivienda_i$pobreza)])[1] %>% as.character()
     
     # --- Nivel educacional del jefe ---
-    jefe <- vivienda_i %>% filter(pco1 == "Jefe(a) de Hogar ")
+    niveles_educ <- levels(data_analisis$educ)
+    jefe <- vivienda_i %>% filter(pco1 == "Jefe(a) de Hogar")
     if (nrow(jefe) == 0) {
-      nivel_educ_jefe <- NA_character_
+      nivel_educ_jefe <- factor(NA_character_, levels = niveles_educ)
     } else {
-      educ_val <- jefe$educ[1]
-      } else {
-        nivel_educ_jefe <- as.character(educ_val)
-      }
+      nivel_educ_jefe <- jefe$educ[1]
+    }
     max_escolaridad <- if (all(is.na(vivienda_i$esc))) NA else max(vivienda_i$esc, na.rm = TRUE)
 
     
@@ -286,7 +282,6 @@ for (i in unique(data_analisis$household)) {
 }
 
 measurements <- bind_rows(resultados_list) %>% distinct()
-stopCluster(cl)
 
 # Inspeccionar resultados
 head(measurements)
