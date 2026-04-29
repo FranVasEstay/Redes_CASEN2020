@@ -181,6 +181,7 @@ for (i in unique(data_analisis$household)) {
     edad_prom <- mean(vivienda_i$edad, na.rm = TRUE)
     edad_sd <- sd(vivienda_i$edad, na.rm = TRUE)
     n_indigena <- sum(vivienda_i$r3 == "Pertenece", na.rm = TRUE)
+    tiene_indigena <- n_indigena > 0
     porc_ind <- ifelse(n_miembros > 0, (n_indigena / n_miembros) * 100, 0)
     
     # --- Geografía ---
@@ -254,6 +255,7 @@ for (i in unique(data_analisis$household)) {
       household = i,
       porc_hombre,
       porc_ind,
+      tiene_indigena,
       tasa_desocupacion,
       tasa_inactividad,
       porc_enfermos,

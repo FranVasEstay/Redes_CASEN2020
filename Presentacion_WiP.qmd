@@ -87,15 +87,15 @@ try({
 ## Introducción: Conceptos Clave
 
 ::: incremental
--   Hogar (CASEN): Grupo de personas que comparten vivienda y presupuesto de alimentación (pueden o no ser parientes).
+- Hogar (CASEN): Grupo de personas que comparten vivienda y presupuesto de alimentación (pueden o no ser parientes).
 
--   Problema: "¿Cómo se organizan las estructuras de parentesco dentro de los hogares chilenos?"
+- Problema: "¿Cómo se organizan las estructuras de parentesco dentro de los hogares chilenos?"
 
--   Transformaciones Demográficas:
+- Transformaciones Demográficas:
 
-    -   Aumento explosivo de hogares unipersonales.
-    -   Disminución de hogares nucleares biparentales.
-    -   Envejecimiento de la estructura familiar.
+  - Aumento explosivo de hogares unipersonales.
+  - Disminución de hogares nucleares biparentales.
+  - Envejecimiento de la estructura familiar.
 :::
 
 ## Marco teórico
@@ -108,9 +108,9 @@ try({
 
 **Perspectiva contemporánea:**
 
--   Parentesco como *construcción social* que crea condiciones ecológicas.
+- Parentesco como *construcción social* que crea condiciones ecológicas.
 
--   Estudios recientes analizan efectos de múltiples lazos (abuelos, tíos, primos).
+- Estudios recientes analizan efectos de múltiples lazos (abuelos, tíos, primos).
 
 Falta de análisis estructural a gran escala de configuraciones familiares completas.
 
@@ -118,35 +118,35 @@ Falta de análisis estructural a gran escala de configuraciones familiares compl
 
 **Fuente de datos:**
 
--   Encuesta CASEN 2020 (Muestra nacional representativa).
+- Encuesta CASEN 2020 (Muestra nacional representativa).
 
--   62.911 hogares.
+- 62.911 hogares.
 
--   185.437 personas.
+- 185.437 personas.
 
 ## Metodología: Construcción de redes
 
 Redes egocéntricas de parentesco:
 
--   Matrimonio: "¿Quiénes son pareja en este hogar?"
+- Matrimonio: "¿Quiénes son pareja en este hogar?"
 
--   Descendencia: "¿Quiénes son los padres de \[NOMBRE\]?"
+- Descendencia: "¿Quiénes son los padres de \[NOMBRE\]?"
 
--   Construcción de Redes:
+- Construcción de Redes:
 
-    -   Nodos: Personas dentro del hogar.
-    -   Aristas (Lazos):
-        -   [Matrimonio/Pareja]{style="color:green"} (No dirigido)
-        -   [Descendencia/Filiación]{style="color:orange"} (Dirigido: Padre $\to$ Hijo)
+  - Nodos: Personas dentro del hogar.
+  - Aristas (Lazos):
+    - [Matrimonio/Pareja]{style="color:green"} (No dirigido)
+    - [Descendencia/Filiación]{style="color:orange"} (Dirigido: Padre $\to$ Hijo)
 
 ## Metodología: Construcción de redes
 
--   Se identificaron **964 configuraciones estructurales únicas.**
+- Se identificaron **964 configuraciones estructurales únicas.**
 
--   Mediante Jenks Natural Breaks, se seleccionaron las **48 tipologías más frecuentes.**
+- Mediante Jenks Natural Breaks, se seleccionaron las **48 tipologías más frecuentes.**
 
-    -   Estas 48 estructuras representan el **93.34%** de la población total de hogares en Chile.
-    -   Reducción de complejidad manteniendo representatividad.
+  - Estas 48 estructuras representan el **93.34%** de la población total de hogares en Chile.
+  - Reducción de complejidad manteniendo representatividad.
 
 ## Metodología: Visualización de tipologías
 
@@ -192,9 +192,9 @@ grid.arrange(grobs=plots_list, ncol=3, top="Mosaico de Tipologías Representativ
 
 **Gradiente rural-urbano**
 
--   T42: 15.2% de sus hogares se ubican en zonas rurales (mayor concentración rural).
+- T42: 15.2% de sus hogares se ubican en zonas rurales (mayor concentración rural).
 
--   T46: 96.6% en zonas urbanas (mayor concentración urbana).
+- T46: 96.6% en zonas urbanas (mayor concentración urbana).
 
 ## Resultados: Patrones identificados
 
@@ -230,9 +230,9 @@ Algunas tipologías se concentran preferentemente en contextos rurales y otras e
 
 **Estratificación socioeconómica**
 
--   T1–T3: Tipologías con los ingresos medianos más altos (ej.: T1 → \$272.000).
+- T1–T3: Tipologías con los ingresos medianos más altos (ej.: T1 → \$272.000).
 
--   T27: Tipología con el ingreso mediano más bajo (\$105.857).
+- T27: Tipología con el ingreso mediano más bajo (\$105.857).
 
 ```{r plot-ingresos-box2, fig.align='center'}
 if(!is.null(tabla_final)){
@@ -290,11 +290,11 @@ if(!is.null(tabla_final)){
 
 **Distribución regional**
 
--   **Norte:** T36 presenta la mayor proporción (33.1%).
+- **Norte:** T36 presenta la mayor proporción (33.1%).
 
--   **Centro:** T42 presenta la mayor proporción (59.6%).
+- **Centro:** T42 presenta la mayor proporción (59.6%).
 
--   **Sur:** T11 presenta la mayor proporción (36.7%).
+- **Sur:** T11 presenta la mayor proporción (36.7%).
 
 ## Resultados - Patrones identificados
 
@@ -325,9 +325,9 @@ if(!is.null(tabla_final)){
 
 **Género en jefatura de hogar**
 
--   T36: 94.1% con jefatura femenina.
+- T36: 94.1% con jefatura femenina.
 
--   T42: 86.9% con jefatura masculina.
+- T42: 86.9% con jefatura masculina.
 
 ```{r plot-genero}
 if(!is.null(tabla_final)){
@@ -359,11 +359,11 @@ Tipologías asociadas a estructuras familiares tradicionales (jefe de hogar masc
 
 **Diversidad étnica y nacional**
 
--   Indígenas: T24 (21.8% presencia).
+- Indígenas: T24 (21.8% presencia).
 
--   Extranjeros: T43 (12.5% presencia).
+- Extranjeros: T43 (12.5% presencia).
 
--   Baja diversidad: T20 y T47.
+- Baja diversidad: T20 y T47.
 
 ```{r plot-etnia, fig.width=10, fig.height=5}
 library(ggplot2)
@@ -446,9 +446,9 @@ if(!is.null(tabla_final)){
 
 **Edad del jefe de hogar**
 
--   T31: Hogares con jefaturas de mayor edad (promedio 64.4 años).
+- T31: Hogares con jefaturas de mayor edad (promedio 64.4 años).
 
--   T37: Hogares con jefaturas más jóvenes (promedio 39.2 años).
+- T37: Hogares con jefaturas más jóvenes (promedio 39.2 años).
 
 *Heterogeneidad* - T21: Mayor variabilidad en edad (DE = 18.1 años), sugiriendo diversidad generacional.
 
@@ -480,13 +480,13 @@ Las tipologías capturan distintos tipos de hogares desde hogares jóvenes hasta
 
 **Variables analizadas:**
 
--   Quintiles de ingreso (Q1-Q5)
+- Quintiles de ingreso (Q1-Q5)
 
--   Ruralidad (Urbano/Mixto/Rural)
+- Ruralidad (Urbano/Mixto/Rural)
 
--   Región (16 regiones)
+- Región (16 regiones)
 
--   Comuna (346 comunas)
+- Comuna (346 comunas)
 
 ## Análisis Chi-Cuadrado por tipología
 
@@ -657,11 +657,11 @@ if(!is.null(data_con_tipologia) && !is.null(df_macro)){
 
 **Método óptimo:** Clustering jerárquico aglomerativo
 
--   **Distancia:** Jaccard (binaria)
+- **Distancia:** Jaccard (binaria)
 
--   **Método:** "average" (correlación cophenética = 0.85)
+- **Método:** "average" (correlación cophenética = 0.85)
 
--   **Número de clusters:** 5 (validado por método de la silueta)
+- **Número de clusters:** 5 (validado por método de la silueta)
 
 ## Clasificación: Clusters por similitud estructural
 
@@ -671,11 +671,11 @@ knitr::include_graphics("Análisis de viviendas/Analisis/Resultados_tipologias/d
 
 ## Patrones por cluster
 
--   **Cluster 1:** Aisladas
--   **Cluster 2:** Parejas sin hijos (solas y extendidas)
--   **Cluster 3:** Nuclear tradicional + Extendidas (nucleares con allegados, complejas y reconstituidas)
--   **Cluster 4:** Monoparental (estructura sola y extendida)
--   **Cluster 5:** Intergeneracional (estructura sola y extendida)
+- **Cluster 1:** Aisladas
+- **Cluster 2:** Parejas sin hijos (solas y extendidas)
+- **Cluster 3:** Nuclear tradicional + Extendidas (nucleares con allegados, complejas y reconstituidas)
+- **Cluster 4:** Monoparental (estructura sola y extendida)
+- **Cluster 5:** Intergeneracional (estructura sola y extendida)
 
 ## Resultados: Macrogrupos Descriptivos
 
@@ -817,11 +817,11 @@ if(file.exists(f_salud)) readRDS(f_salud)
 
 3 niveles de análisis:
 
--   48 tipologías: Diversidad estructural cuantificada
+- 48 tipologías: Diversidad estructural cuantificada
 
--   7 macrogrupos: Categorías interpretables
+- 7 macrogrupos: Categorías interpretables
 
--   5 clusters: Patrones naturales identificados
+- 5 clusters: Patrones naturales identificados
 
 **Mismos gradientes en todos los niveles**
 
@@ -833,10 +833,10 @@ if(file.exists(f_salud)) readRDS(f_salud)
 
 ## Conclusiones clave: Gradientes sociodemográficos.
 
--   Ingresos: Tipologías simples y sin hijos $\to$ Mayores ingresos.
+- Ingresos: Tipologías simples y sin hijos $\to$ Mayores ingresos.
 
--   Género: Polarización marcada en la jefatura de hogar.
+- Género: Polarización marcada en la jefatura de hogar.
 
--   Territorio: Especialización funcional (tipologías rurales vs urbanas).
+- Territorio: Especialización funcional (tipologías rurales vs urbanas).
 
--   Estrategia: La complejidad familiar (allegamiento, extensión) a menudo actúa como estrategia ante la vulnerabilidad económica.
+- Estrategia: La complejidad familiar (allegamiento, extensión) a menudo actúa como estrategia ante la vulnerabilidad económica.
