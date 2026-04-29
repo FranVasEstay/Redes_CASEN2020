@@ -1,6 +1,5 @@
 ################################################################################
 ###################### Social Network: encuesta CASEN ##########################
-################################################################################
 ###################### 7. CLASIFICACIÓN DE TIPOLOGÍAS ##########################
 ################################################################################
 library(cluster)
@@ -8,44 +7,44 @@ library(dplyr)
 library(factoextra)
 library(igraph)
 library(purrr)
+library(tidyr)   # para pivotar si es necesario
 
-#GENERAR EXAMPLES
-## Cargar datos de redes
+# ------------------------------------------------------------------------------
+# 1. CARGAR DATOS Y GENERAR EJEMPLOS
+# ------------------------------------------------------------------------------
 load("Análisis de viviendas/Redes/kinship_igraph_no_attrs.RData")
 load("Análisis de viviendas/Data/fingerprints.RData")
 tipologia_df <- read.csv("Análisis de viviendas/Analisis/Resultados_Tipologias/Reportes/resumen_tipologias.csv")
 
-# Contar frecuencias de cada fingerprint único
+# Calcular frecuencias de cada fingerprint
 freq_table <- table(fingerprints)
 unique_fps <- names(sort(freq_table, decreasing = TRUE))
-tipologia_freq <- freq_table[unique_fps]  # Reordenamos la tabla
+tipologia_freq <- freq_table[unique_fps]
 names(tipologia_freq) <- paste0("T", seq_along(unique_fps))
-
-# Paso 3. Mostrar la tabla
 print(tipologia_freq)
+
 tipologias_validas <- paste0("T", 1:48)
 tipologia_df <- tipologia_df %>% filter(Tipologia %in% tipologias_validas)
 
-# 5. Guardar un grafo de ejemplo por tipología
+# Grafo ejemplo por tipología
 examples <- lapply(unique_fps, function(fp) {
   idx <- which(fingerprints == fp)[1]
   kinship_igraph_no_attrs[[idx]]$kinship_net
 })
-names(examples) <- paste0("T", seq_along(unique_fps))  # Asignar nombres T1, T2, ...
+names(examples) <- paste0("T", seq_along(unique_fps))
 
-# Función independiente para detectar estructuras intergeneracionales
+# ------------------------------------------------------------------------------
+# 2. FUNCIONES PARA DETECTAR ESTRUCTURAS FAMILIARES
+# ------------------------------------------------------------------------------
 detectar_intergeneracional <- function(grafo) {
   if (vcount(grafo) < 3) return(FALSE)
-  
-  # Buscar cadenas puras de 3 generaciones conectadas por 'descent'
   for (v in V(grafo)) {
-    # Cadena ascendente: abuelo -> padre -> ego
+    # Cadena ascendente
     padres <- neighbors(grafo, v, mode = "in")
     if (length(padres) >= 1) {
       for (p in padres) {
         abuelos <- neighbors(grafo, p, mode = "in")
         if (length(abuelos) >= 1) {
-          # Verificar conexiones consecutivas
           if (all(E(grafo)[p %->% v]$type == "descent") && 
               all(E(grafo)[abuelos %->% p]$type == "descent")) {
             return(TRUE)
@@ -53,8 +52,7 @@ detectar_intergeneracional <- function(grafo) {
         }
       }
     }
-    
-    # Cadena descendente: ego -> hijo -> nieto
+    # Cadena descendente
     hijos <- neighbors(grafo, v, mode = "out")
     if (length(hijos) >= 1) {
       for (h in hijos) {
@@ -70,14 +68,13 @@ detectar_intergeneracional <- function(grafo) {
   }
   return(FALSE)
 }
-# Función para detectar estructuras familiares en un grafo
+
 clasificar_tipologia <- function(grafo) {
-  # Extraer atributos de las aristas (relaciones)
   edge_types <- E(grafo)$type
   edge_ends <- ends(grafo, E(grafo))
   num_vertices <- vcount(grafo)
   num_edges <- ecount(grafo)
-  # Inicializar vector de resultados
+  
   resultados <- list(
     intergeneracional = FALSE,
     padrastros = FALSE,
@@ -86,18 +83,17 @@ clasificar_tipologia <- function(grafo) {
     monoparental = FALSE,
     pareja_sin_hijos = FALSE
   )
-  # Caso especial:  pareja sin hijos
+  
+  # Pareja sin hijos
   if (num_vertices == 2 && num_edges == 2 && "marriage" %in% edge_types) {
     resultados$pareja_sin_hijos <- TRUE
     return(resultados)
   }
-  # 1. Estructura intergeneracional (abuelo-padre-nieto) 
-  # USAR NEIHBORHOOD
+  
+  # Intergeneracional
   resultados$intergeneracional <- detectar_intergeneracional(grafo)
   
-  # 2. Presencia de padrastros/madrastras
-  # Relación marriage donde al menos un hijo no es de ambos
-  # VERIFICA SI TODOS LOS HIJOS TIENEN AMBOS PADRES EN LA RED
+  # Padrastros
   matrimonios <- which(edge_types == "marriage")
   for (m in matrimonios) {
     pareja <- edge_ends[m, ]
@@ -114,21 +110,13 @@ clasificar_tipologia <- function(grafo) {
     if (resultados$padrastros) break
   }
   
-  # 3. Presencia de suegros
-  # Un nodo conectado por marriage a otro que tiene hijos
-  # SE USA NEIGHBORHOOD AQUÍ TAMBIÉN
-  resultados$suegros <- FALSE
-  matrimonios <- which(E(grafo)$type == "marriage")
-  
+  # Suegros
   if (length(matrimonios) > 0) {
     for (m in matrimonios) {
       pareja <- ends(grafo, m)
-      
-      # Verificar si ALGÚN MIEMBRO DE LA PAREJA TIENE PADRES EN EL GRAFO
       for (p in pareja) {
         padres <- neighborhood(grafo, order = 1, nodes = p, mode = "in")[[1]]
         padres <- padres[E(grafo)[.from(padres) & .to(p)]$type == "descent"]
-        
         if (length(padres) > 0) {
           resultados$suegros <- TRUE
           break
@@ -138,11 +126,10 @@ clasificar_tipologia <- function(grafo) {
     }
   }
   
-  # 4. Nodos aislados
+  # Nodos aislados
   resultados$nodos_aislados <- any(degree(grafo) == 0)
   
-  # 5. Estructura monoparental
-  # Solo un padre/madre con hijos, sin relación marriage
+  # Monoparental
   padres <- which(degree(grafo, mode = "out") > 0)
   if (length(padres) == 1 && sum(edge_types == "marriage") == 0) {
     resultados$monoparental <- TRUE
@@ -151,110 +138,151 @@ clasificar_tipologia <- function(grafo) {
   return(resultados)
 }
 
-# Aplicar a todas las tipologías
-clasificaciones <- lapply(examples, clasificar_tipologia)  
-
-# Convertir a dataframe
+# Aplicar a cada tipología
+clasificaciones <- lapply(examples, clasificar_tipologia)
 df_clasificacion <- bind_rows(clasificaciones, .id = "Tipologia") %>%
-  mutate(across(where(is.logical), as.numeric))  # Convertir TRUE/FALSE a 1/0
+  mutate(across(where(is.logical), as.numeric))
 
 write.csv(df_clasificacion, "Análisis de viviendas/Analisis/Resultados_tipologias/matriz_clasificacion.csv", row.names = FALSE)
 
-#### MACROGRUPOS ####
-df_macro <- df_final %>%
-  rename(tipologia = Tipologia) %>% 
-  select(tipologia, everything()) %>%
+# ------------------------------------------------------------------------------
+# 3. CLASIFICACIÓN EN MACROGRUPOS (BASE) Y SUBCATEGORÍAS PARA EXTENDIDAS
+# ------------------------------------------------------------------------------
+# Primero unir con los datos de frecuencias y aristas (suponiendo que tipologia_df tiene 'Aristas')
+# Asegurarse de que tipologia_df contenga la columna 'Aristas' (número de aristas del grafo).
+# Si no, se puede agregar después.
+df_final <- tipologia_df %>%
+  left_join(df_clasificacion, by = "Tipologia")
+
+# --- Definir condiciones básicas (usando las variables binarias y Aristas) ---
+df_final <- df_final %>%
+  mutate(
+    es_aislada = (nodos_aislados == 1 & Aristas == 0),
+    es_pareja_sin_hijos = (pareja_sin_hijos == 1),
+    es_monoparental = (monoparental == 1),
+    # Nuclear tradicional: sin ninguna característica compleja
+    es_nuclear_trad = (!es_aislada & !es_pareja_sin_hijos & !es_monoparental &
+                         intergeneracional == 0 & padrastros == 0 & suegros == 0 &
+                         !(nodos_aislados == 1 & Aristas > 0)),
+    # Extendida: todo lo que no es ninguna de las anteriores
+    es_extendida = (!es_aislada & !es_pareja_sin_hijos & !es_monoparental & !es_nuclear_trad)
+  )
+
+# Asignación de macrogrupo base (mutuamente excluyente)
+df_final <- df_final %>%
   mutate(
     macrogrupo = case_when(
-      nodos_aislados == 1 & Aristas > 0 ~ "Extendida",  # Nodos aislados con conexiones
-      pareja_sin_hijos == 1 ~ "Pareja sin hijos",
-      monoparental == 1 ~ "Monoparental",
-      intergeneracional == 1 ~ "Intergeneracional",  # PRIORIDAD MÁS ALTA para intergeneracional
+      es_aislada ~ "Aislada",
+      es_pareja_sin_hijos ~ "Pareja sin hijos",
+      es_monoparental ~ "Monoparental",
+      es_nuclear_trad ~ "Nuclear tradicional",
+      es_extendida ~ "Extendida",
+      TRUE ~ "Otro"
+    )
+  )
+
+# --- Subcategorías para los hogares Extendida ---
+df_final <- df_final %>%
+  mutate(
+    subcategoria = case_when(
+      macrogrupo != "Extendida" ~ NA_character_,
+      
+      # Prioridad: intergeneracional (aunque tenga otras características)
+      intergeneracional == 1 ~ "Intergeneracional",
+      
+      # Reconstituida
       padrastros == 1 ~ "Reconstituida",
-      suegros == 1 ~ "Extendida",  # Solo suegros
-      nodos_aislados == 1 & Aristas == 0 ~ "Aislada",
-      TRUE ~ "Nuclear tradicional"
-    ) 
-  ) %>%
-  select(tipologia, macrogrupo)
-table(df_macro$macrogrupo)
-write.csv(df_macro, "Análisis de viviendas/Analisis/Resultados_tipologias/clasificacion_tipologias_con_macrogrupos.csv", row.names = FALSE)
+      
+      # Con suegros
+      suegros == 1 ~ "Con suegros",
+      
+      # Pareja extendida: cuando hay una pareja (sin hijos) y el resto son no parientes o parientes lejanos
+      # Detectamos: si hay exactamente un marriage y ningún hijo, y nodos_aislados o presencia de otros
+      (pareja_sin_hijos == 0) & (sum(intergeneracional, padrastros, suegros) == 0) &
+        (nodos_aislados == 1 & Aristas > 0) ~ "Pareja extendida",
+      
+      # Otros casos: por ejemplo, nodos aislados con conexiones pero sin marriage/padres específicos
+      nodos_aislados == 1 & Aristas > 0 ~ "Con otros miembros",
+      
+      # Resto
+      TRUE ~ "Extendida simple"
+    )
+  )
 
-### CLUSTERING DE TIPOLOGÍAS ###
+# Guardar resultados de clasificación
+df_macro <- df_final %>%
+  select(Tipologia, macrogrupo, subcategoria)
 
-# Preparación de datos
-df_filtrado <- df_clasificacion[1:48, ] # Hasta tipología 48
+write.csv(df_macro, "Análisis de viviendas/Analisis/Resultados_tipologias/clasificacion_tipologias_con_subcategorias.csv", row.names = FALSE)
+
+# Tablas resumen
+cat("\nDistribución de macrogrupos base:\n")
+print(table(df_macro$macrogrupo))
+
+cat("\nDistribución de subcategorías dentro de Extendida:\n")
+print(table(df_macro$subcategoria, useNA = "ifany"))
+
+# ------------------------------------------------------------------------------
+# 4. (OPCIONAL) CLUSTERING DE TIPOLOGÍAS (para validación)
+# ------------------------------------------------------------------------------
+# Si deseas mantener el análisis de clusters (aunque no lo usarás como clasificación principal),
+# puedes ejecutar el siguiente bloque. Si no, coméntalo.
+
+# Preparar matriz de características (6 variables binarias)
+df_filtrado <- df_clasificacion[1:48, ]
 matrix_clasificacion <- as.matrix(df_filtrado[, -1])
 rownames(matrix_clasificacion) <- df_filtrado$Tipologia
 colnames(matrix_clasificacion) <- names(df_filtrado)[-1]
-matrix_clasificacion <- na.omit(matrix_clasificacion)
 
-# Métrica de distancia
 d <- dist(matrix_clasificacion, method = "binary")
 
-# ANÁLISIS COMPARATIVO DE MÉTODOS -------------------------------------------------
-# 1. K-means - Método de la silueta
-sil_width_kmeans <- map_dbl(2:10, ~{  kmeans_result <- kmeans(matrix_clasificacion, centers = .x, nstart = 25)
+# Comparar métodos
+sil_width_kmeans <- map_dbl(2:10, ~{
+  kmeans_result <- kmeans(matrix_clasificacion, centers = .x, nstart = 25)
   mean(silhouette(kmeans_result$cluster, dist(matrix_clasificacion))[, 3])
 })
 
-# 2. PAM - Método de la silueta  
 sil_width_pam <- map_dbl(2:10, ~{
   pam_fit <- pam(d, k = .x, diss = TRUE)
   pam_fit$silinfo$avg.width
 })
 
-# 3. Comparación métodos clustering jerárquico
 methods <- c("ward.D2", "complete", "average", "mcquitty")
 cophenetic_cors <- map_dbl(methods, ~cor(d, cophenetic(hclust(d, method = .x))))
 
-# CLUSTERING FINAL (usando average - mejor coeficiente cophenético) ----------------
+# Cluster final (k=5 como ejemplo)
 hc_final <- agnes(d, method = "average")
 clust <- cutree(hc_final, k = 5)
 
-# VISUALIZACIÓN -------------------------------------------------------------------
-# Dendrograma con 5 clusters
-png("Análisis de viviendas/Analisis/Resultados_tipologias/dendrograma_5clusters.png", 
+# Dendrograma
+png("Análisis de viviendas/Analisis/Resultados_tipologias/dendrograma_5clusters.png",
     width = 1200, height = 800, res = 150)
-par(mar = c(8, 4, 4, 2) + 0.1)  # Márgenes ajustados para etiquetas
+par(mar = c(8,4,4,2)+0.1)
 pltree(hc_final, cex = 0.6, hang = -1, main = "Dendrograma tipologías - 5 Clusters")
 rect.hclust(hc_final, k = 5, border = 2:5)
-dev.off()  # Cerrar dispositivo
+dev.off()
 
-# INTEGRACIÓN DE RESULTADOS -------------------------------------------------------
-clust_df <- data.frame(
-  Tipologia = rownames(matrix_clasificacion),
-  Cluster = as.factor(clust)
-)
+# Integrar clusters a df_final
+clust_df <- data.frame(Tipologia = rownames(matrix_clasificacion), Cluster = as.factor(clust))
+df_final <- df_final %>% left_join(clust_df, by = "Tipologia")
 
-df_final <- tipologia_df %>%
-  left_join(df_clasificacion, by = "Tipologia") %>%
-  left_join(clust_df, by = "Tipologia")
-
-# ANÁLISIS DESCRIPTIVO POR CLUSTER ------------------------------------------------
+# Estadísticas por cluster
 cluster_stats <- df_final %>%
   group_by(Cluster) %>%
   summarise(
     n_tipologias = n(),
     freq_total = sum(Frecuencia, na.rm = TRUE),
-    across(c(intergeneracional, padrastros, suegros, nodos_aislados, 
+    across(c(intergeneracional, padrastros, suegros, nodos_aislados,
              monoparental, pareja_sin_hijos), ~mean(., na.rm = TRUE), .names = "prop_{.col}")
   )
 
-tipologias_por_cluster <- df_final %>%
-  group_by(Cluster) %>%
-  summarise(
-    tipologias = paste(Tipologia, collapse = ", "),
-    n_tipologias = n()
-  )
-
-# EXPORTACIÓN DE RESULTADOS -------------------------------------------------------
-write.csv(df_final, "Análisis de viviendas/Analisis/Resultados_tipologias/clasificacion_tipologias_4clusters.csv", row.names = FALSE)
-write.csv(cluster_stats, "Análisis de viviendas/Analisis/Resultados_tipologias/estadisticas_4clusters.csv", row.names = FALSE, fileEncoding = "UTF-8")
-write.csv(tipologias_por_cluster, "Análisis de viviendas/Analisis/Resultados_tipologias/tipologias_por_cluster_4clusters.csv", row.names = FALSE, fileEncoding = "UTF-8")
+write.csv(cluster_stats, "Análisis de viviendas/Analisis/Resultados_tipologias/estadisticas_clusters.csv", row.names = FALSE)
 
 # Mostrar resultados
-print("Distribución de clusters:")
-table(clust)
-print("\nEstadísticas por cluster:")
-Publish::publish(cluster_stats)
+cat("\nDistribución de clusters:\n")
+print(table(clust))
+cat("\nEstadísticas por cluster:\n")
+print(cluster_stats)
+
+# Opcional: guardar df_final completo
+write.csv(df_final, "Análisis de viviendas/Analisis/Resultados_tipologias/df_final_completo.csv", row.names = FALSE)
