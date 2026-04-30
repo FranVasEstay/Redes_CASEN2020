@@ -21,7 +21,7 @@ library(vcd)
    
 # Cargar datos necesarios
 load("Ergomitos/Redes/kinship_igrpah.RData") #Redes
-households_por_tipologia <- readRDS("C:/Users/Kibif/Desktop/Redes Diego/Directorio_proyecto/Redes_CASEN2020/Análisis de viviendas/Analisis/Resultados_Tipologias/Reportes/households_por_tipologia.rds") # contiene los households para cada tipología
+households_por_tipologia <- readRDS("Análisis de viviendas/Analisis/Resultados_Tipologias/Reportes/households_por_tipologia.rds") # contiene los households para cada tipología
 muestra_tipologias <- read.csv("Análisis de viviendas/Data/muestra_tipologias.csv",sep = "\t") #tipologias
 load("Análisis de viviendas/Descriptives/medidas_redes.RData") #Datos de medidas
 porc_rural <- read.csv("Análisis de viviendas/Data/porc_rural_comuna.csv",sep = ",",encoding="UTF-8") #porcentaje de pob.rural por comuna

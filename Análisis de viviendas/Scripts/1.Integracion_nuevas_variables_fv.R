@@ -132,7 +132,7 @@ length(unique(data_analisis$household)) # 62537 con id_vivienda y filtro, 62907 
 save(data_analisis, file = "Análisis de viviendas/Data/Data_analisis.RData")
 
  ##¿Cuantas viviendas tienen un id de persona repetido? ¿CuáleS?
-a <- paste(data$household, data$id_persona)
+a <- paste(data_analisis$household, data_analisis$id_persona)
 #Cuantas
 cat("Número de viviendas con id de persona repetido:", sum(duplicated(a)), "\n")
 #Cuales

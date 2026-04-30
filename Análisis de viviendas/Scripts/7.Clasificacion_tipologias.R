@@ -29,6 +29,12 @@ examples <- lapply(unique_fps, function(fp) {
   idx <- which(fingerprints == fp)[1]
   kinship_igraph_no_attrs[[idx]]$kinship_net
 })
+examples <- lapply(examples, function(g) {
+  if (inherits(g, "igraph")) {
+    g <- igraph::upgrade_graph(g)
+  }
+  g
+})
 names(examples) <- paste0("T", seq_along(unique_fps))
 
 # ------------------------------------------------------------------------------
@@ -37,11 +43,11 @@ names(examples) <- paste0("T", seq_along(unique_fps))
 
 # Detección de cadena intergeneracional (abuelo→padre→hijo)
 detectar_intergeneracional <- function(grafo) {
-  if (vcount(grafo) < 3) return(FALSE)
+  if (igraph::vcount(grafo) < 3) return(FALSE)
   for (v in V(grafo)) {
-    padres <- neighbors(grafo, v, mode = "in")
+    padres <- igraph::neighbors(grafo, v, mode = "in")
     for (p in padres) {
-      abuelos <- neighbors(grafo, p, mode = "in")
+      abuelos <- igraph::neighbors(grafo, p, mode = "in")
       if (length(abuelos) >= 1) {
         # Verificar tipo "descent" en las aristas
         edge_vp <- E(grafo)[p %->% v]     # padre→hijo
@@ -53,9 +59,9 @@ detectar_intergeneracional <- function(grafo) {
         }
       }
     }
-    hijos <- neighbors(grafo, v, mode = "out")
+    hijos <- igraph::neighbors(grafo, v, mode = "out")
     for (h in hijos) {
-      nietos <- neighbors(grafo, h, mode = "out")
+      nietos <- igraph::neighbors(grafo, h, mode = "out")
       if (length(nietos) >= 1) {
         edge_vh <- E(grafo)[v %->% h]
         edge_hn <- E(grafo)[h %->% nietos]
@@ -74,7 +80,7 @@ detectar_intergeneracional <- function(grafo) {
 clasificar_tipologia <- function(grafo) {
   edge_types <- E(grafo)$type
   edge_ends <- ends(grafo, E(grafo))
-  num_vertices <- vcount(grafo)
+  num_vertices <- igraph::vcount(grafo)
   num_edges <- ecount(grafo)
   
   resultados <- list(
@@ -99,11 +105,11 @@ clasificar_tipologia <- function(grafo) {
   matrimonios <- which(edge_types == "marriage")
   for (m in matrimonios) {
     pareja <- edge_ends[m, ]
-    hijos_pareja <- unique(unlist(neighborhood(grafo, order = 1, nodes = pareja, mode = "out")))
+    hijos_pareja <- unique(unlist(igraph::neighborhood(grafo, order = 1, nodes = pareja, mode = "out")))
     # Quitar los propios cónyuges
     hijos <- setdiff(hijos_pareja, pareja)
     for (h in hijos) {
-      padres_h <- neighbors(grafo, h, mode = "in")
+      padres_h <- igraph::neighbors(grafo, h, mode = "in")
       # Si al menos uno de los cónyuges no es padre biológico (no hay arista descent)
       if (!all(pareja %in% padres_h)) {
         resultados$padrastros <- TRUE
@@ -131,11 +137,11 @@ clasificar_tipologia <- function(grafo) {
   }
   
   # ---- Nodos aislados ----
-  resultados$nodos_aislados <- any(degree(grafo) == 0)
+  resultados$nodos_aislados <- any(igraph::degree(grafo) == 0)
   
   # ---- Monoparental ----
   if (sum(edge_types == "marriage") == 0) {
-    padres <- which(degree(grafo, mode = "out") > 0)
+    padres <- which(igraph::degree(grafo, mode = "out") > 0)
     if (length(padres) == 1) {
       resultados$monoparental <- TRUE
     }
@@ -174,7 +180,7 @@ df_final <- df_final %>%
   mutate(
     macrogrupo = case_when(
       es_aislada ~ "Isolated",
-      es_pareja_sin_hijos ~ "Chidless Couple",
+      es_pareja_sin_hijos ~ "Childless Couple",
       es_monoparental ~ "Single-Parent",
       es_nuclear_trad ~ "Tradicional Nuclear",
       es_extendida ~ "Extended",
@@ -203,7 +209,7 @@ df_final <- df_final %>%
       padrastros == 1 ~ "Reconstituted",
       (nodos_aislados == 1 & Aristas > 0) &
         (pareja_sin_hijos == 0 & intergeneracional == 0 & padrastros == 0 & suegros == 0 & monoparental == 0) ~ "Extended couple",
-      monoparental == 1 ~ "Extended single-parent",
+      monoparental == 1 ~ "Extended Single-Parent",
       TRUE ~ "Complex"
     )
   ) %>% select(-n_rasgos)

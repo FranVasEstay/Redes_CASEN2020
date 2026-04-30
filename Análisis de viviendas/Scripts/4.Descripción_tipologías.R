@@ -13,18 +13,10 @@ library(tidyr)
 load("Análisis de viviendas/Data/Data_con_tipología.RData")
 load("Análisis de viviendas/Data/Data_analisis.RData")
 
-
-datos_completos_T48 <- data_analisis %>%
-  left_join(
-    data_con_tipologia %>% 
-      select(household, tipologia, porc_rural,porc_chi,porc_ind),  # Incluir porc_rural aquí
-    by = "household"
-  ) %>% filter(!is.na(tipologia))
-
 # --------------------------------------------
 # 1. Estadísticas de EDAD (jefes de hogar)
 # --------------------------------------------
-edad_stats <- datos_completos_T48 %>%
+edad_stats <- data_con_tipologia %>%
   filter(pco1 == "Jefe(a) de Hogar") %>%
   group_by(tipologia) %>%
   summarise(
@@ -35,7 +27,7 @@ edad_stats <- datos_completos_T48 %>%
 # --------------------------------------------
 # 2. GÉNERO de jefes de hogar (% Hombres/Mujeres)
 # --------------------------------------------
-genero_stats <- datos_completos_T48 %>%
+genero_stats <- data_con_tipologia %>%
   filter(pco1 == "Jefe(a) de Hogar") %>%
   group_by(tipologia) %>%
   summarise(
@@ -46,7 +38,7 @@ genero_stats <- datos_completos_T48 %>%
 # --------------------------------------------
 # 3. UBICACIÓN: Rural/Urbano y Macrozonas
 # --------------------------------------------
-ubicacion_stats <- datos_completos_T48 %>%
+ubicacion_stats <- data_con_tipologia %>%
   mutate(
     area = ifelse(porc_rural > 50, "Rural", "Urbano"),
     macrozona = case_when(
@@ -73,43 +65,17 @@ ubicacion_stats <- datos_completos_T48 %>%
 # --------------------------------------------
 # 4. EXTRANJEROS y PUEBLOS ORIGINARIOS
 # --------------------------------------------
-# Este cuenta a las personas extranjeras en la tipología
-# Mide la composición demográfica general de cada tipología. (Foco demográfico)
-# No distingue si los extranjeros están concentrados en pocas viviendas o distribuidos homogéneamente
-# Puede sobrestimar la influencia en hogares donde solo 1 miembro de por ejemplo 5 sea extranjeros
-origen_stats <- datos_completos_T48 %>% 
-  group_by(tipologia) %>%
+origen_stats <- data_con_tipologia %>% 
+  group_by(household, tipologia) %>%
   summarise(
-    "%_Extranjero" = round(mean(r1b_pais_esp == "Extranjero", na.rm = TRUE) * 100, 1),
-    "%_Pueblo_Originario" = round(mean(r3 == "Pertenece", na.rm = TRUE) * 100, 1)
-  )
-
-# viviendas extranjeras y viviendas indígneas con umbral del 50% (Foco en la "integración cultural" o segregación residencial)
-# Identifica hogares con influencia cultural extranjera dominante (≥50% miembros).
-# Pierde información de hogares con menos % de extranjeros/indígenas
-viviendas_ext <- datos_completos_T48 %>%
-  distinct(household, tipologia, porc_chi) %>%  # Evitar duplicados por hogar
-  mutate(
-    porc_extranjero = 100 - porc_chi,
-    vivienda_extranjera = porc_extranjero >= 50  # Umbral 50%
-  )
-viviendas_ind <- datos_completos_T48 %>%
-  distinct(household, tipologia, porc_ind) %>%  # Evitar duplicados
-  mutate(
-    vivienda_indigena = porc_ind >= 50  # Umbral 50%
-  )
-origen_stats_2 <- viviendas_ext %>%
-  left_join(viviendas_ind, by = c("household", "tipologia")) %>%
-  group_by(tipologia) %>%
-  summarise(
-    "%_Viviendas_Extranjeras" = round(mean(vivienda_extranjera, na.rm = TRUE) * 100, 1),
-    "%_Viviendas_Indigenas" = round(mean(vivienda_indigena, na.rm = TRUE) * 100, 1)
+    "%_Viviendas_Extranjeras" = round(mean(tiene_extranjero) * 100, 1),
+    "%_Viviendas_Indigenas"   = round(mean(tiene_indigena) * 100, 1)
   )
 
 # --------------------------------------------
 # 5. INGRESO Mediano mejor
 # --------------------------------------------
-ingreso_por_vivienda <- datos_completos_T48 %>%
+ingreso_por_vivienda <- data_con_tipologia %>%
   group_by(household, tipologia) %>%  # Agrupar por vivienda y tipología
   summarise(
     ingreso_promedio_vivienda = mean(ytotcor, na.rm = TRUE),  # Promedio interno

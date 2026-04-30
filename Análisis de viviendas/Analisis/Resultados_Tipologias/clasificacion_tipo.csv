@@ -1,6 +1,6 @@
 "Tipologia","macrogrupo","subcategoria","intergeneracional"
 "T1","Isolated",NA,0
-"T2","Chidless Couple",NA,0
+"T2","Childless Couple",NA,0
 "T3","Tradicional Nuclear",NA,0
 "T4","Single-Parent",NA,0
 "T5","Tradicional Nuclear",NA,0
@@ -11,7 +11,7 @@
 "T10","Extended","Complex",1
 "T11","Extended","Extended couple",0
 "T12","Extended","Reconstituted",0
-"T13","Extended","Extended single-parent",0
+"T13","Extended","Extended Single-Parent",0
 "T14","Extended","Reconstituted",0
 "T15","Extended","Complex",1
 "T16","Extended","Extended couple",0
@@ -24,14 +24,14 @@
 "T23","Extended","Complex",0
 "T24","Tradicional Nuclear",NA,0
 "T25","Extended","Reconstituted",0
-"T26","Extended","Extended single-parent",0
+"T26","Extended","Extended Single-Parent",0
 "T27","Single-Parent",NA,0
 "T28","Extended","Reconstituted",0
 "T29","Extended","Extended couple",0
 "T30","Extended","Extended couple",0
 "T31","Extended","Complex",1
 "T32","Extended","Complex",1
-"T33","Extended","Extended single-parent",0
+"T33","Extended","Extended Single-Parent",0
 "T34","Extended","Complex",0
 "T35","Extended","Complex",0
 "T36","Extended","Complex",1
