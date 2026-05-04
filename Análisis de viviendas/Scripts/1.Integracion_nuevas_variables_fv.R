@@ -239,6 +239,13 @@ for (i in unique(data_analisis$household)) {
     }
     max_escolaridad <- if (all(is.na(vivienda_i$esc))) NA else max(vivienda_i$esc, na.rm = TRUE)
 
+    # --- Sexo del jefe ---
+    jefe <- vivienda_i %>% filter(pco1 == "Jefe(a) de Hogar")
+    if (nrow(jefe) == 0) {
+      sexo_jefe <- NA_character_
+    } else {
+      sexo_jefe <- as.character(jefe$sex[1])
+    }
     
     # --- VIV03: Hacinamiento ---
     # hacinamiento es factor con niveles: 1 Sin, 2 Medio, 3 Alto, 4 Crítico
@@ -271,6 +278,7 @@ for (i in unique(data_analisis$household)) {
       pobreza_hogar,
       max_escolaridad,
       nivel_educ_jefe,
+      sexo_jefe,
       hacinamiento_cat,
       allegamiento_interno,
       allegamiento_externo
