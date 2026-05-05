@@ -436,28 +436,24 @@ ggsave("Análisis de viviendas/Analisis/Figure_5.png",
 # 4. MATRIZ DE ESTRUCTURAS BASE (EJEMPLOS DE CADA MACROGRUPO)
 # =============================================================================
 plot_typology_gg <- function(g, title_text, node_size = 8, label_size = 3) {
-  # Convertir igraph a objeto tidygraph
-  tg <- as_tbl_graph(g)
-  
-  # Determinar tipo de aristas (si no existe atributo 'type', asumir "descent")
-  if ("type" %in% edge_attr_names(g)) {
-    edge_type <- E(g)$type
-  } else {
-    edge_type <- rep("descent", ecount(g))
+  # Asegurar que los vértices tengan un atributo 'name' (para la etiqueta)
+  if (is.null(V(g)$name)) {
+    V(g)$name <- as.character(1:vcount(g))
+  }
+  # Asegurar que las aristas tengan un atributo 'type' (marriage o descent)
+  if (is.null(E(g)$type)) {
+    E(g)$type <- "descent"
   }
   
-  # Colores y tipos de línea
-  edge_color <- ifelse(edge_type == "marriage", "#4daf4a", "#ff7f00")
-  edge_linetype <- ifelse(edge_type == "marriage", "solid", "solid") # o "dashed" si quieres diferenciar
+  tg <- as_tbl_graph(g)
   
-  # Creamos el gráfico
-  p <- ggraph(tg, layout = "nicely") +   # layout automático
-    geom_edge_link(aes(edge_colour = edge_type),
+  p <- ggraph(tg, layout = "nicely") +
+    geom_edge_link(aes(colour = type),
                    edge_width = 1.2,
-                   arrow = arrow(type = "closed", length = unit(3, "mm")),
-                   end_cap = circle(5, "mm"),
-                   start_cap = circle(5, "mm")) +
-    geom_node_point(aes(), size = node_size, color = "#6baed6", fill = "white", shape = 21, stroke = 1) +
+                   arrow = arrow(type = "closed", length = unit(2, "mm")),
+                   end_cap = circle(4, "mm"),
+                   start_cap = circle(4, "mm")) +
+    geom_node_point(size = node_size, color = "#6baed6", fill = "white", shape = 21, stroke = 1) +
     geom_node_text(aes(label = name), size = label_size, repel = TRUE) +
     scale_edge_colour_manual(values = c("marriage" = "#4daf4a", "descent" = "#ff7f00")) +
     theme_void() +
@@ -468,8 +464,13 @@ plot_typology_gg <- function(g, title_text, node_size = 8, label_size = 3) {
   return(p)
 }
 
-# Carpeta con las imágenes PNG de cada tipología
-path_graficos <- "Análisis de viviendas/Analisis/Resultados_Tipologias/Graficos/"
+# Verificar que 'examples' existe y tiene nombres
+if (!exists("examples")) {
+  stop("El objeto 'examples' no está en el entorno. Ejecuta primero el script que genera las tipologías.")
+}
+if (is.null(names(examples))) {
+  names(examples) <- paste0("T", seq_along(examples))
+}
 
 # Ejemplos representativos de cada macrogrupo
 macros_ejemplo <- list(
@@ -480,13 +481,21 @@ macros_ejemplo <- list(
   "Extended (T41)"        = "T41"
 )
 
-# Generar los gráficos como ggplots
-plots_macro <- lapply(names(macros_ejemplo), function(nm) {
+plots_macro <- list()
+for (nm in names(macros_ejemplo)) {
   t_code <- macros_ejemplo[[nm]]
-  g <- examples[[t_code]]
-  plot_typology_gg(g, title_text = nm, node_size = 6, label_size = 3)
-})
+  if (t_code %in% names(examples)) {
+    g <- examples[[t_code]]
+    plots_macro[[nm]] <- plot_typology_gg(g, title_text = nm, node_size = 6, label_size = 3)
+  } else {
+    # Si la tipología no existe, crear un gráfico de error
+    plots_macro[[nm]] <- ggplot() + 
+      annotate("text", x = 0.5, y = 0.5, label = paste("Falta:", t_code)) +
+      theme_void()
+  }
+}
 
+# Combinar en una fila con patchwork
 panel_basico <- wrap_plots(plots_macro, nrow = 1) +
   plot_annotation(
     title = "Basic Structures of Macrogroups",
@@ -508,21 +517,25 @@ dev.off()
 
 # Ejemplos de subcategorías de estructuras Extendidas
 subcats_extendida <- list(
-  "Tradicional Nuclear Extended (T43)"      = "T43",
-  "Single-Parent Extended (T41)" = "T41",
-  "Extended Couple (T30)"       = "T30",
-  "Reconstituted (T14)"          = "T14",
-  "Complex (T36)"               = "T36"
+  "Traditional Nuclear Extended (T43)" = "T43",
+  "Single-Parent Extended (T41)"       = "T41",
+  "Extended Couple (T30)"              = "T30",
+  "Reconstituted (T14)"                = "T14",
+  "Complex (T36)"                      = "T36"
 )
 
-plots_ext <- lapply(names(subcats_extendida), function(nm) {
+plots_ext <- list()
+for (nm in names(subcats_extendida)) {
   t_code <- subcats_extendida[[nm]]
-  g <- examples[[t_code]]
-  # Texto más detallado abajo
-  p <- plot_typology_gg(g, title_text = nm, node_size = 6, label_size = 3)
-  # Añadir subtítulo o información adicional si quieres (opcional)
-  return(p)
-})
+  if (t_code %in% names(examples)) {
+    g <- examples[[t_code]]
+    plots_ext[[nm]] <- plot_typology_gg(g, title_text = nm, node_size = 6, label_size = 3)
+  } else {
+    plots_ext[[nm]] <- ggplot() + 
+      annotate("text", x = 0.5, y = 0.5, label = paste("Falta:", t_code)) +
+      theme_void()
+  }
+}
 
 panel_extendido <- wrap_plots(plots_ext, ncol = 3) +
   plot_annotation(

@@ -60,10 +60,6 @@ hogares_con_indice <- tipologia_larga %>%
 hogares_con_indice <- hogares_con_indice %>%
   left_join(macrogrupos, by = c("Tipologia" = "Tipologia"))
 
-# Verificar cobertura #AQUÍ HAY QUE REVISAR
-cat("Hogares únicos en tipologia_larga:", n_distinct(tipologia_larga$household), "\n")
-cat("Hogares con red disponible en kinship_igrpah:", n_distinct(hogares_con_indice$household), "\n")
-
 # ------------------------------------------------------------------------------
 # 3. FUNCIÓN PARA PROCESAR UN HOGAR Y EXTRAER NODOS AISLADOS
 # ------------------------------------------------------------------------------
