@@ -257,8 +257,8 @@ write.table(muestra_tipologias, file = "Análisis de viviendas/Data/muestra_tipo
 plot_tipologia <- function(g, nombre, freq) {
   # Configuración visual consistente
   V(g)$color <- "#6baed6"
-  V(g)$size <- 25
-  V(g)$label.cex <- 1
+  V(g)$size <- 40
+  V(g)$label.cex <- 1.5
   V(g)$frame.color <- "white"
   V(g)$label.color <- "black"
   
@@ -282,36 +282,28 @@ plot_tipologia <- function(g, nombre, freq) {
   png_file <- paste0("Análisis de viviendas/Analisis/Resultados_Tipologias/Graficos/", nombre, ".png")
   
   # Configurar dispositivo gráfico
-  png(png_file, width = 850, height = 750, bg = "white")
+  png(png_file, width = 1200, height = 1000,res=150, bg = "white")
   
   # Diseño del gráfico
-  layout(matrix(c(1, 2,3), nrow = 3), heights = c(3, 1, 0.7))
+  layout(matrix(c(1,2,3), nrow=3), heights = c(3, 0.8, 0.5))
   
   # Gráfico de la red
-  par(mar = c(1, 1, 3, 1))
+  par(mar = c(1,1,3,1))
   plot(g, main = paste("Tipología:", nombre, "| Frecuencia:", freq, "casos"),
        vertex.label.family = "sans", edge.label.family = "sans")
   
   # Información adicional
-  par(mar = c(1, 1, 1, 1))
+  par(mar = c(1,1,1,1))
   plot.new()
-  text(0.5, 0.8, paste("Nodos:", vcount(g)), cex = 1.2, font = 2)
-  text(0.5, 0.5, paste("Aristas:", ecount(g)), cex = 1.2, font = 2)
-  text(0.5, 0.2, paste("Densidad:", round(edge_density(g), 4)), cex = 1.2, font = 2)
+  text(0.5, 0.8, paste("Nodos:", vcount(g)), cex = 1.5, font = 2)
+  text(0.5, 0.5, paste("Aristas:", ecount(g)), cex = 1.5, font = 2)
+  text(0.5, 0.2, paste("Densidad:", round(edge_density(g), 4)), cex = 1.5, font = 2)
   
   #Leyenda personalizada
-  par(mar = c(0, 1, 0, 1))
+  par(mar = c(0,1,0,1))
   plot.new()
-  legend("center",
-         legend = c("marriage", "descent"),
-         col = c("#4daf4a", "#ff7f00"),  # Verde y naranja
-         lwd = 3,
-         lty = 1,
-         pch = NA,
-         bty = "n",
-         horiz = TRUE,
-         cex = 1.1,
-         text.width = max(strwidth(c("marriage", "descent"))))
+  legend("center", legend = c("marriage", "descent"), col = c("#4daf4a", "#ff7f00"),
+         lwd = 3, lty = 1, horiz = TRUE, cex = 1.3, bty = "n")
   
   dev.off()
 }

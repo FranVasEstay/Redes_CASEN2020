@@ -59,7 +59,7 @@ length(unique(data_subset$household))
 ########################## RED DE DESCENDENCIA #################################
 # Establecer el número de núcleos para el procesamiento en paralelo
 num_cores <- detectCores() - 1
-cl <- parallel::makeCluster(num_cores) # Corrige 'ncores' por 'num_cores'
+cl <- parallel::makeCluster(num_cores)
 registerDoParallel(cl)
 start.time <- Sys.time()
 
@@ -132,7 +132,7 @@ descent_igrpah_sample <- foreach(i = unique_households, .packages = c(
 }
 
 end.time <- Sys.time()
-stopCluster(cl) # Detener el clúster
+stopCluster(cl)
 time.taken_parallel <- end.time - start.time
 time.taken_parallel
 
