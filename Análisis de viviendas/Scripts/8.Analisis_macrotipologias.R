@@ -291,24 +291,22 @@ p_zona <- ggplot(hogares_zona, aes(x = macrogrupo, y = porc, fill = macrozona)) 
         legend.position = "bottom")
 
 # -------------------------------------------------------------------------
-# 1. POBREZA (barras apiladas al 100%)
+# 8. POBREZA (barras apiladas al 100%)
 # -------------------------------------------------------------------------
 pobreza_long <- tabla_macro %>%
-  select(macrogrupo, starts_with("porc_pobreza")) %>%
-  pivot_longer(cols = -macrogrupo, 
-               names_to = "categoria", 
-               values_to = "porcentaje") %>%
-  mutate(categoria = recode(categoria,
-                            porc_pobreza_extrema = "Pobreza extrema",
-                            porc_pobreza_no_extrema = "Pobreza no extrema",
-                            porc_no_pobre = "No pobre"))
+  select(macrogrupo, porc_pobreza_extrema, porc_pobreza_no_extrema, porc_no_pobre) %>%
+  pivot_longer(cols = -macrogrupo, names_to = "categoria", values_to = "porcentaje")
 
 p_pobreza <- ggplot(pobreza_long, aes(x = macrogrupo, y = porcentaje, fill = categoria)) +
   geom_col(position = "fill", width = 0.7) +
   geom_text(aes(label = ifelse(porcentaje > 5, paste0(round(porcentaje, 1), "%"), "")),
             position = position_fill(vjust = 0.5), size = 3, color = "white") +
   scale_y_continuous(labels = percent_format()) +
-  scale_fill_viridis_d(option = "plasma", end = 0.9, name = "") +
+  scale_fill_viridis_d(option = "plasma", end = 0.9, 
+                       name = "",
+                       labels = c(porc_pobreza_extrema = "Pobreza extrema",
+                                  porc_pobreza_no_extrema = "Pobreza no extrema",
+                                  porc_no_pobre = "No pobre")) +
   labs(title = "Pobreza por macrogrupo", x = "", y = "Proporción") +
   theme_minimal() +
   theme(axis.text.x = element_text(angle = 45, hjust = 1),
@@ -407,16 +405,12 @@ p_generacional <- ggplot(generacional_long, aes(x = macrogrupo, y = porcentaje, 
   theme(axis.text.x = element_text(angle = 45, hjust = 1),
         legend.position = "bottom",
         legend.text = element_text(size = 8))
-
-# -------------------------------------------------------------------------
-# MOSTRAR LOS GRÁFICOS (individuales o combinados)
-# -------------------------------------------------------------------------
 p_pobreza
 p_hacinamiento
-p_allegamiento_dot          # o p_allegamiento_dot
+p_allegamiento        # o p_allegamiento_dot
 p_generacional
 
-# Si quieres juntar pobreza, hacinamiento y allegamiento en una misma figura:
+
 (p_pobreza | p_hacinamiento) / p_allegamiento + 
   plot_annotation(title = "Condiciones de la vivienda por macrogrupo")
 
