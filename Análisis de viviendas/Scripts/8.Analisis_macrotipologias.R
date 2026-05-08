@@ -50,7 +50,7 @@ hogares <- measurements %>%
     macrogrupo = factor(macrogrupo,
                         levels = c("Isolated","Childless Couple","Tradicional Nuclear","Single-Parent","Extended"))
   )
-
+save(hogares,file="Análisis de viviendas/Data/hogares.RData")
 # Asegurarnos de que existan tiene_extranjero y tiene_indigena
 # (en measurements ya deberían estar, pero por si acaso)
 if (!"tiene_extranjero" %in% names(hogares)) {

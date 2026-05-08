@@ -8,24 +8,49 @@ library(dplyr)
 library(ggrepel)
 
 # Cargar datos
-load("Análisis de viviendas/Data/data_macrotiplogias.RData")
+load("Análisis de viviendas/Descriptives/medidas_redes.RData")
+load("Análisis de viviendas/Data/Data_con_tipología.RData")
+macrogrupos <- read.csv("Análisis de viviendas/Analisis/Resultados_tipologias/clasificacion_tipo.csv",
+                        stringsAsFactors = FALSE) %>%
+  filter(Tipologia %in% paste0("T", 1:48))
+
+# Extraer información a nivel hogar desde data_con_tipologia (una fila por hogar)
+data_con_tipologia <-data_con_tipologia %>%
+  mutate(
+    macrozona = case_when(
+      region %in% c("Arica y Parinacota", "Tarapacá","Antofagasta","Atacama","Coquimbo") ~ "Norte",
+      region %in% c("Valparaíso","Metropolitana","O'Higgins", 
+                    "Maule", "Ñuble") ~ "Centro",
+      region %in% c("Biobío", "La Araucanía", 
+                    "Los Ríos", "Los Lagos","Aysén", "Magallanes") ~ "Sur",
+      TRUE ~ "Otra"
+    ))
+
+hogar_info <- data_con_tipologia %>%
+  distinct(household, tipologia, porc_rural, rural_cat, macrozona)
+
+# Construir dataset principal: measurements + tipología + variables geográficas + macrogrupo
+hogares <- measurements %>%
+  inner_join(hogar_info, by = "household") %>%
+  inner_join(macrogrupos, by = c("tipologia" = "Tipologia")) %>%
+  mutate(
+    macrogrupo = factor(macrogrupo,
+                        levels = c("Isolated","Childless Couple","Tradicional Nuclear","Single-Parent","Extended"))
+  )
 
 # Preparar datos para MCA
-mca_data <- data_macro %>%
+mca_data <- hogares %>%
   select(
-   # household,
     macrogrupo,
-    tipologia,
-    zona,          
+    #subcategoria,
+    macrozona,          
     rural_cat,        
-    sueldo_cat
+    quintil_ingreso
   ) %>%
   mutate(across(everything(), as.factor))
 
-
 #MCA con macrogrupo como variable activa 
-mca_result <- MCA(mca_data,quali.sup =c(1,2#,3
-                                        ),ncp = 5, graph = FALSE)
+mca_result <- MCA(mca_data,quali.sup =c(1,2),ncp = 5, graph = FALSE) #
 nrow(mca_result$ind$coord) # debería ser 58.707
 print(mca_result)
 summary(mca_result)
@@ -40,7 +65,7 @@ fviz_screeplot(mca_result, addlabels = TRUE, ylim = c(0, 60)) +
 # --- Gráfico básico de categorías ---
 fviz_mca_var(
   mca_result,
-  repel = FALSE,  # ⚡ Mucho más rápido
+  repel = FALSE,
   ggtheme = theme_minimal(),
   title = "Categorías y variables"
 )
@@ -51,25 +76,16 @@ quali_sup_coords <- as.data.frame(mca_result$quali.sup$coord)
 
 # Renombrar columnas para que sean válidas en ggplot
 colnames(quali_sup_coords) <- gsub(" ", "_", colnames(quali_sup_coords))
+
 # Ahora las columnas se llaman Dim_1, Dim_2, etc.
 quali_sup_coords$variable <- rownames(quali_sup_coords)
 
-# Determinar si es tipología o macrogrupo
+# Determinar macrogrupo
 quali_sup_coords <- quali_sup_coords %>%
   mutate(
     tipo = ifelse(variable %in% levels(mca_data$macrogrupo), "macrogrupo", "tipologia"),
     grupo = variable
   )
-# tipologia
-#fviz_mca_biplot(
-#  mca_result,
-#  geom = "point",
-#  habillage = mca_data$tipologia, # coloreamos por tipología
-#  addEllipses = TRUE,             # elipses por grupo
-#  ellipse.type = "confidence",    # intervalos de confianza
-#  ggtheme = theme_minimal(),
-#  title = "Distribución de hogares agrupados por tipología"
-#) # No es informativo
 
 # Graficar centroides de tipologías y macrogrupos
 ggplot(quali_sup_coords, aes(x = Dim_1, y = Dim_2, color = tipo, label = grupo)) +
@@ -96,6 +112,7 @@ fviz_mca_biplot(
   ggtheme = theme_minimal(),
   title = "MCA agrupado por macrogrupo"
 )
+
 fviz_mca_biplot(
   mca_result,
   geom = "point",
@@ -118,12 +135,15 @@ ggplot(coords, aes(x = Dim_1, y = Dim_2, color = macrogrupo)) +
     x = paste0("Dim1 (", round(mca_result$eig[1,2], 1), "%)"),
     y = paste0("Dim2 (", round(mca_result$eig[2,2], 1), "%)"),
     color = "Macrogrupo"
-  ) # Aquí deberían verse todos los hogares peor no pasa
+  ) # Aquí deberían verse todos los hogares pero no pasa
+
 ggplot(coords, aes(x = Dim_1, y = Dim_2, color = macrogrupo)) +
   geom_count(alpha = 0.5) +
   theme_minimal() +
   ggtitle("Distribución de hogares por macrogrupo (tamaño = cantidad)")
 # en gráfico hexagonal
+
+
 library(hexbin)
 # Gráfico de hexágonos para visualizar densidad
 ggplot(coords, aes(x = Dim_1, y = Dim_2)) +
@@ -132,6 +152,7 @@ ggplot(coords, aes(x = Dim_1, y = Dim_2)) +
   facet_wrap(~ macrogrupo) +  # Por macrogrupo
   theme_minimal() +
   labs(title = "Distribución de densidad por macrogrupo (hexbin)")
+
 #alpha blending
 # Puntos muy transparentes
 ggplot(coords, aes(x = Dim_1, y = Dim_2, color = macrogrupo)) +
@@ -149,6 +170,7 @@ fviz_mca_ind(
   ggtheme = theme_minimal(),
   title = "Distribución completa de hogares por macrogrupo"
 ) # se solapan los puntos
+
 # Graficar nube de puntos con densidad visual
 ggplot(coords, aes(x = Dim_1, y = Dim_2)) +
   geom_point(aes(color = macrogrupo), size = 1.5, alpha = 0.4) + # todos los puntos visibles
@@ -158,6 +180,7 @@ ggplot(coords, aes(x = Dim_1, y = Dim_2)) +
   ggtitle("Distribución de hogares por macrogrupo con densidad") +
   guides(color = guide_legend(title = "Macrogrupo"),
          fill = guide_colorbar(title = "Densidad"))
+
 # Gráfico interactivo con plotly
 library(plotly)
 p <- ggplot(coords, aes(x = Dim_1, y = Dim_2, color = macrogrupo,
@@ -270,13 +293,13 @@ ggplot(coords, aes(x = Dim_1, y = Dim_2)) +
   geom_point(aes(color = zona), alpha = 0.4, size = 2) +
   
   # Elipses por zona
-  stat_ellipse(aes(color = zona), level = 0.95, linewidth = 1) +
+  stat_ellipse(aes(color = macrozona), level = 0.95, linewidth = 1) +
   
   # Diferenciar forma según ruralidad
   geom_point(aes(shape = rural_cat), size = 3, alpha = 0.5) +
   
   # Contorno según sueldo
-  geom_point(aes(fill = sueldo_cat), shape = 21, size = 2, color = "black", alpha = 0.5) +
+  geom_point(aes(fill = quintil_ingreso), shape = 21, size = 2, color = "black", alpha = 0.5) +
   
   # Tema limpio
   theme_minimal() +
@@ -287,7 +310,7 @@ ggplot(coords, aes(x = Dim_1, y = Dim_2)) +
     y = "Dimensión 2",
     color = "Zona",
     shape = "Ruralidad",
-    fill = "Sueldo"
+    fill = "Quintil"
   ) +
   
   guides(

@@ -1,5 +1,5 @@
 # Cargar datos
-load("Análisis de viviendas/Data/data_macrotiplogias.RData")
+load("Análisis de viviendas/Data/hogares.RData")
 # 3. CHI-SQUARE TESTS  ---------------------------------------------------------
 # Function for typology-wise chi-square tests
 chi_test_macrogroups <- function(data, test_var) {
@@ -25,9 +25,9 @@ chi_test_macrogroups <- function(data, test_var) {
 
 # Ejecutar pruebas para variables clave
 chi_results <- list(
-  region = chi_test_macrogroups(data_macro, "region"),
-  rural = chi_test_macrogroups(data_macro, "rural_cat"),
-  income = chi_test_macrogroups(data_macro, "sueldo_cat")
+  region = chi_test_macrogroups(hogares, "region"),
+  rural = chi_test_macrogroups(hogares, "rural_cat"),
+  income = chi_test_macrogroups(hogares, "quintil_ingreso")
 )
 
 # 3.1 HEATMAP DE SIGNIFICANCIA - CORREGIDO
