@@ -1,0 +1,17 @@
+"macrogrupo","relacion","n","porcentaje"
+"Extended","Grandchild",1256,39.2254840724547
+"Extended","Other relative",734,22.9231730168645
+"Extended","Brother/sister",530,16.5521549031855
+"Extended","Not related",306,9.55652717051843
+"Extended","Brother/sister-in-law",210,6.55840099937539
+"Extended","Father/mother-in-law",72,2.24859462835728
+"Extended","Live-in domestic servant",69,2.15490318550906
+"Extended","Son/daughter-in-law",25,0.780762023735166
+"Isolated","Brother/sister",969,36.2921348314607
+"Isolated","Grandchild",714,26.7415730337079
+"Isolated","Other relative",513,19.2134831460674
+"Isolated","Not related",430,16.1048689138577
+"Isolated","Brother/sister-in-law",22,0.823970037453184
+"Isolated","Live-in domestic servant",11,0.411985018726592
+"Isolated","Son/daughter-in-law",8,0.299625468164794
+"Isolated","Father/mother-in-law",3,0.112359550561798

@@ -1,0 +1,89 @@
+"tipologia","relacion","n","porcentaje"
+"T11","Grandchild",468,54.0415704387991
+"T11","Other relative",143,16.5127020785219
+"T11","Brother/sister",91,10.5080831408776
+"T11","Brother/sister-in-law",80,9.2378752886836
+"T11","Not related",57,6.58198614318707
+"T11","Father/mother-in-law",15,1.73210161662818
+"T11","Live-in domestic servant",8,0.92378752886836
+"T11","Son/daughter-in-law",4,0.46189376443418
+"T13","Other relative",166,29.3805309734513
+"T13","Brother/sister",158,27.9646017699115
+"T13","Grandchild",145,25.6637168141593
+"T13","Not related",70,12.3893805309735
+"T13","Brother/sister-in-law",7,1.23893805309735
+"T13","Father/mother-in-law",7,1.23893805309735
+"T13","Live-in domestic servant",6,1.06194690265487
+"T13","Son/daughter-in-law",6,1.06194690265487
+"T16","Grandchild",164,36.043956043956
+"T16","Other relative",120,26.3736263736264
+"T16","Brother/sister",62,13.6263736263736
+"T16","Brother/sister-in-law",47,10.3296703296703
+"T16","Not related",34,7.47252747252747
+"T16","Father/mother-in-law",16,3.51648351648352
+"T16","Live-in domestic servant",9,1.97802197802198
+"T16","Son/daughter-in-law",3,0.659340659340659
+"T21","Brother/sister",282,36.8146214099217
+"T21","Grandchild",201,26.2402088772846
+"T21","Other relative",145,18.9295039164491
+"T21","Not related",131,17.1018276762402
+"T21","Brother/sister-in-law",6,0.783289817232376
+"T21","Live-in domestic servant",1,0.130548302872063
+"T26","Other relative",94,37.007874015748
+"T26","Brother/sister",64,25.1968503937008
+"T26","Grandchild",43,16.9291338582677
+"T26","Not related",33,12.992125984252
+"T26","Son/daughter-in-law",7,2.75590551181102
+"T26","Brother/sister-in-law",6,2.36220472440945
+"T26","Live-in domestic servant",5,1.96850393700787
+"T26","Father/mother-in-law",2,0.78740157480315
+"T29","Other relative",69,29.1139240506329
+"T29","Grandchild",45,18.9873417721519
+"T29","Brother/sister",27,11.3924050632911
+"T29","Brother/sister-in-law",27,11.3924050632911
+"T29","Not related",26,10.9704641350211
+"T29","Live-in domestic servant",24,10.126582278481
+"T29","Father/mother-in-law",18,7.59493670886076
+"T29","Son/daughter-in-law",1,0.421940928270042
+"T30","Grandchild",249,64.0102827763496
+"T30","Brother/sister",39,10.025706940874
+"T30","Other relative",37,9.51156812339332
+"T30","Not related",33,8.48329048843188
+"T30","Brother/sister-in-law",24,6.16966580976864
+"T30","Father/mother-in-law",3,0.77120822622108
+"T30","Live-in domestic servant",3,0.77120822622108
+"T30","Son/daughter-in-law",1,0.25706940874036
+"T33","Grandchild",99,40.2439024390244
+"T33","Brother/sister",62,25.2032520325203
+"T33","Other relative",54,21.9512195121951
+"T33","Not related",26,10.5691056910569
+"T33","Brother/sister-in-law",4,1.6260162601626
+"T33","Live-in domestic servant",1,0.40650406504065
+"T41","Grandchild",37,37.7551020408163
+"T41","Other relative",24,24.4897959183673
+"T41","Brother/sister",22,22.4489795918367
+"T41","Not related",9,9.18367346938776
+"T41","Son/daughter-in-law",3,3.06122448979592
+"T41","Brother/sister-in-law",1,1.02040816326531
+"T41","Father/mother-in-law",1,1.02040816326531
+"T41","Live-in domestic servant",1,1.02040816326531
+"T43","Other relative",27,29.3478260869565
+"T43","Not related",18,19.5652173913043
+"T43","Brother/sister-in-law",14,15.2173913043478
+"T43","Live-in domestic servant",12,13.0434782608696
+"T43","Father/mother-in-law",10,10.8695652173913
+"T43","Grandchild",6,6.52173913043478
+"T43","Brother/sister",5,5.43478260869565
+"T45","Brother/sister",81,30.3370786516854
+"T45","Grandchild",73,27.3408239700375
+"T45","Other relative",64,23.9700374531835
+"T45","Not related",48,17.9775280898876
+"T45","Brother/sister-in-law",1,0.374531835205993
+"T8","Brother/sister",606,37.0189370800244
+"T8","Grandchild",440,26.8784361637141
+"T8","Other relative",304,18.5705558949298
+"T8","Not related",251,15.3329260843005
+"T8","Brother/sister-in-law",15,0.916310323762981
+"T8","Live-in domestic servant",10,0.610873549175321
+"T8","Son/daughter-in-law",8,0.488698839340257
+"T8","Father/mother-in-law",3,0.183262064752596
