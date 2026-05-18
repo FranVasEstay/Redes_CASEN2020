@@ -1,5 +1,7 @@
 library(FactoMineR)
 library(factoextra)
+library(dplyr)
+library(png)
 
 # 1.  Cargar datos
 load("Análisis de viviendas/Data/hogares.RData")
@@ -13,7 +15,12 @@ data_mca <- hogares %>%
     pobreza_hogar = factor(pobreza_hogar, levels = c("No pobres","Pobres no extremos","Pobres extremos")),
     macrozona = factor(macrozona, levels = c("Norte", "Centro", "Sur"))
   )
+
 # Ejecutar ACM
 res_mca <- MCA(data_mca, quali.sup = 1)  # macrogrupo como suplementaria
+
+
+png(file = "Análisis de viviendas/Analisis/MCA_macro.png")
 fviz_mca_biplot(res_mca, repel = TRUE, 
                 title = "MCA - Relationship between macrogroups and socioeconomic variables")
+dev.off()
