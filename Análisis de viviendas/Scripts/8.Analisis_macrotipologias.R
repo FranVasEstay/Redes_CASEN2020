@@ -171,85 +171,188 @@ p_freq <- hogares %>%
 # 3.2. INGRESO QUINTIL – GRÁFICO DE LINES Y PUNTOS
 # =============================================================================
 p_income <- hogares %>%
-  group_by(macrogrupo, quintil_ingreso) %>%
+  group_by(quintil_ingreso, macrogrupo) %>%
   summarise(n = n(), .groups = "drop") %>%
-  group_by(macrogrupo) %>%
+  group_by(quintil_ingreso) %>% 
   mutate(porc = n / sum(n) * 100) %>%
-  ggplot(aes(x = macrogrupo, y = porc, fill = quintil_ingreso)) +
-  geom_col(position = "fill", width = 0.7) +
+  ggplot(aes(x = quintil_ingreso, y = porc, fill = macrogrupo)) +
+  geom_col(position = "fill", width = 0.7, show.legend = FALSE) +
   geom_text(aes(label = paste0(round(porc, 1), "%")),
             position = position_fill(vjust = 0.5),
             size = 3, color = "white") +
-  scale_y_continuous(labels = percent_format()) +
-  scale_fill_viridis_d(option = "plasma", end = 0.9, name = "Income quintile") +
-  labs(title = "Distribution of income quintiles by Macrogroup",
-       x = "", y = "Proportion of households") +
+  scale_y_continuous(labels = scales::percent_format()) +
+  scale_fill_viridis_d(option = "plasma", end = 0.9, name = "Macrogroup") +
+  labs(title = "Distribution of Macrogroups by income quintile",
+       x = "Income quintile", y = "Proportion of households") +
   theme_minimal() +
-  theme(axis.text.x = element_text(angle = 45, hjust = 1))
-
+  theme(axis.text.x = element_text(angle = 0, hjust = 0.5))
+p_income
 # =============================================================================
-# 3.3. RURALIDAD
+# 3.3. INGRESO CONTINUO
+# =============================================================================
+# OPCIÓN 1: TIENE VALORES MUY EXTREMOS
+hogares <- hogares %>%
+  mutate(macrogrupo = factor(macrogrupo))
+
+p_income_density <- ggplot(hogares, aes(x = sueldo, fill = macrogrupo)) +
+  geom_density(position = "fill", alpha = 0.7, bw = "nrd") +
+  scale_y_continuous(labels = percent_format()) +
+  scale_x_continuous(labels = label_dollar(prefix = "$", big.mark = ".", decimal.mark = ",")) +
+  scale_fill_viridis_d(option = "plasma", end = 0.9, name = "Macrogroup") +
+  labs(title = "Distribution of Macrogroups along income (smoothed density)",
+       x = "Monthly household income (CLP)", 
+       y = "Proportion of households") +
+  theme_minimal() +
+  theme(legend.position = "bottom")
+
+p_income_density
+
+#OPCIÓN 1.1: PARA MANEJAR VALORES EXTREMOS SE USA HASTA EL PERCENTIL 99%
+# Calcular percentil 99
+p99 <- quantile(hogares$sueldo, 0.99, na.rm = TRUE)
+
+# Filtrar datos hasta el percentil 99
+hogares_filt <- hogares %>% filter(sueldo <= p99)
+
+p_income_density_2 <- ggplot(hogares_filt, aes(x = sueldo, fill = macrogrupo)) +
+  geom_density(position = "fill", alpha = 0.7, bw = "nrd") +
+  scale_y_continuous(labels = percent_format()) +
+  scale_x_continuous(labels = label_dollar(prefix = "$", big.mark = ".", decimal.mark = ",")) +
+  scale_fill_viridis_d(option = "plasma", end = 0.9, name = "Macrogroup") +
+  labs(title = "Distribution of Macrogroups along income (up to 99th percentile)",
+       x = "Monthly household income (CLP)", 
+       y = "Proportion of households") +
+  theme_minimal() +
+  theme(legend.position = "bottom")
+p_income_density_2
+
+#OPCIÓN 2: PARA MANEJAR VALORES EXTREMOS
+hogares <- hogares %>%
+  mutate(macrogrupo = factor(macrogrupo))  # asegurar factor
+
+# Crear intervalos y calcular proporciones
+area_data <- hogares %>%
+  mutate(ingreso_bin = cut(sueldo, breaks = 20, labels = FALSE)) %>%
+  filter(!is.na(ingreso_bin), !is.na(macrogrupo)) %>%
+  group_by(ingreso_bin, macrogrupo) %>%
+  summarise(n = n(), .groups = "drop") %>%
+  group_by(ingreso_bin) %>%
+  mutate(prop = n / sum(n)) %>%
+  ungroup()
+
+# Añadir los macrogrupos que faltan en cada bin (prop = 0)
+area_data_completo <- area_data %>%
+  complete(ingreso_bin, macrogrupo, fill = list(n = 0, prop = 0))
+
+# Calcular puntos medios de cada bin
+bin_edges <- seq(min(hogares$sueldo, na.rm = TRUE), 
+                 max(hogares$sueldo, na.rm = TRUE), 
+                 length.out = 21)
+midpoints <- (bin_edges[-1] + bin_edges[-length(bin_edges)]) / 2
+
+area_data_completo <- area_data_completo %>%
+  mutate(ingreso_medio = midpoints[ingreso_bin])
+
+# Gráfico
+p_income_area <- ggplot(area_data_completo, aes(x = ingreso_medio, y = prop, fill = macrogrupo)) +
+  geom_area(position = "fill", alpha = 0.8, color = "white", size = 0.3) +
+  scale_y_continuous(labels = percent_format()) +
+  scale_x_continuous(labels = label_dollar(prefix = "$", big.mark = ".", decimal.mark = ",")) +
+  scale_fill_viridis_d(option = "plasma", end = 0.9, name = "Macrogroup") +
+  labs(title = "Distribution of Macrogroups along income",
+       x = "Monthly household income (CLP)", 
+       y = "Proportion of households") +
+  theme_minimal() +
+  theme(legend.position = "bottom")
+
+p_income_area
+# =============================================================================
+# 3.4. RURALIDAD
 # =============================================================================
 datos_rural <- hogares %>%
-  group_by(macrogrupo, rural_cat) %>%
+  group_by(rural_cat, macrogrupo) %>%
   summarise(n = n(), .groups = "drop") %>%
-  group_by(macrogrupo) %>%
+  group_by(rural_cat) %>%
   mutate(porc = n / sum(n) * 100) %>%
   mutate(
     rural_cat = recode(rural_cat,
                        "Rural" = "Rural",
                        "Urbano" = "Urban",
-                       "Mixto" = "Mixed",
-                       .default = as.character(rural_cat)))
+                       "Mixto" = "Mixed")
+  )
 p_rural <- datos_rural %>%
-  ggplot(aes(x = macrogrupo, y = porc, fill = rural_cat)) +
-  geom_col(position = "fill", width = 0.7) +
-  # Etiquetas de porcentaje dentro de cada segmento
+  ggplot(aes(x = rural_cat, y = porc, fill = macrogrupo)) + 
+  geom_col(position = "fill", width = 0.7, show.legend = FALSE) +
   geom_text(aes(label = paste0(round(porc, 1), "%")),
             position = position_fill(vjust = 0.5),
             size = 3, color = "white") +
   scale_y_continuous(labels = percent_format()) +
-  scale_fill_viridis_d(option = "plasma", end = 0.9, name = "Area") +
-  labs(title = "Proportion of rural, mixed and urban households by Macrogroup",
-       x = "", y = "Proportion of households") +
+  scale_fill_viridis_d(option = "plasma", end = 0.9, name = "Macrogroup") +
+  labs(title = "Proportion of Macrogroups by urban/rural area",
+       x = "Area", y = "Proportion of households") +
   theme_minimal() +
-  theme(axis.text.x = element_text(angle = 45, hjust = 1))
+  theme(axis.text.x = element_text(angle = 0, hjust = 0.5))
 
 # =============================================================================
-# 3.4. GÉNERO DEL JEFE DE HOGAR
+# 3.5. GÉNERO DEL JEFE DE HOGAR
 # =============================================================================
 p_genero <- tabla_macro %>%
   ggplot(aes(x = macrogrupo, y = porc_jefe_mujer, fill = macrogrupo)) +
   geom_col(show.legend = FALSE) +
-  geom_text(aes(label = paste0(round(porc_jefe_mujer, 1), "%")), 
-            vjust = -0.5, size = 3.5) +
+  geom_text(aes(label = paste0(round(porc_jefe_mujer, 1), "%")),position = position_fill(vjust = 15),size = 3.5, color = "white") +
   scale_fill_viridis_d(option = "plasma", end = 0.8) +
   labs(title = "Households with female headship",
-       x = "", y = "Proportion of households") +
-  theme_minimal() +
-  theme(axis.text.x = element_text(angle = 45, hjust = 1))
-
-# =============================================================================
-# 3.5. COMPOSICIÓN ÉTNICA: PRESENCIA INDÍGENA Y EXTRANJERA (dot‑plot conjunto)
-# =============================================================================
-indicadores_ie <- tabla_macro %>%
-  select(macrogrupo, 
-         Native = porc_hogares_indigena,
-         Foreign = porc_hogares_extranjero) %>%
-  pivot_longer(cols = -macrogrupo, names_to = "indicador", values_to = "porcentaje")
-
-p_ie <- ggplot(indicadores_ie, aes(x = porcentaje, y = macrogrupo, color = indicador)) +
-  geom_line(aes(group = macrogrupo), color = "gray70", linewidth = 0.5) +  # línea de conexión
-  geom_point(size = 3) +
-  geom_text(aes(label = paste0(round(porcentaje, 1), "%")),
-            vjust = -0.8, size = 3.5, color = "black", show.legend = FALSE) +
-  scale_x_continuous(labels = percent_format(scale = 1)) +
-  scale_color_viridis_d(option = "plasma", end = 0.8, name = "") +
-  labs(title = "Households with indigenous and foreign presence",
        x = "Proportion of households", y = "") +
   theme_minimal() +
-  theme(legend.position = "bottom")
+  coord_flip()
+p_genero
+# =============================================================================
+# 3.5. COMPOSICIÓN ÉTNICA: PRESENCIA INDÍGENA Y EXTRANJERA
+# =============================================================================
+datos_native <- tabla_macro %>%
+  select(macrogrupo, presencia = porc_hogares_indigena) %>%
+  mutate(ausencia = 100 - presencia) %>%
+  pivot_longer(cols = c(presencia, ausencia), 
+               names_to = "estado", 
+               values_to = "porcentaje")
 
+# Gráfico para Native
+p_native <- datos_native %>%
+  ggplot(aes(x = macrogrupo, y = porcentaje, fill = estado)) +
+  geom_col(position = position_dodge(width = 0.7), width = 0.6) +
+  geom_text(aes(label = paste0(round(porcentaje, 1), "%")), position = position_dodge(width = 0.5),vjust = -2, size = 3.5,color = "black") +
+  scale_y_continuous(labels = scales::percent_format(scale = 1)) +
+  scale_fill_manual(values = c("presencia" = "#440154", "ausencia" = "#FDE725"),
+                    name = "", labels = c("Indigenous", "Non-indigenous")) +
+  labs(title = "Indigenous households by Macrogroup",
+       x = "Proportion of households", y = "") +
+  theme_minimal() +
+  coord_flip() 
+p_native
+
+# Datos para Foreign (extranjero)
+datos_foreign <- tabla_macro %>%
+  select(macrogrupo, presencia = porc_hogares_extranjero) %>%
+  mutate(ausencia = 100 - presencia) %>%
+  pivot_longer(cols = c(presencia, ausencia), 
+               names_to = "estado", 
+               values_to = "porcentaje")
+# Gráfico para Foreign
+p_foreign <- ggplot(datos_foreign, aes(x = macrogrupo, y = porcentaje, fill = estado)) +
+  geom_col(position = position_dodge(width = 0.7), width = 0.6) +
+  geom_text(aes(label = paste0(round(porcentaje, 1), "%")),
+            position = position_dodge(width = 0.7), 
+            vjust = -2, size = 3.5) +
+  scale_y_continuous(labels = scales::percent_format(scale = 1)) +
+  scale_fill_manual(values = c("presencia" = "#440154", "ausencia" = "#FDE725"),
+                    name = "", labels = c("Foreign", "Non-foreign")) +
+  labs(title = "Foreign households by Macrogroup",
+       x = "", y = "Proportion of households") +
+  theme_minimal() +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1),
+        legend.position = "bottom")+
+  coord_flip()
+p_foreign
 # =============================================================================
 # 3.6. SALUD
 # =============================================================================
@@ -264,83 +367,94 @@ tabla_salud <- hogares %>%
 p_salud <- tabla_salud %>%
   ggplot(aes(x = macrogrupo, y = porc_hogares_con_enfermo, fill = macrogrupo)) +
   geom_col(show.legend = FALSE) +
-  geom_text(aes(label = paste0(round(porc_hogares_con_enfermo, 1), "%")), 
-            vjust = -0.5, size = 3.5) +
+  geom_text(aes(label = paste0(round(porc_hogares_con_enfermo, 1), "%")),position = position_fill(vjust = 5),size = 3.5, color = "white") +
   scale_fill_viridis_d(option = "plasma", end = 0.8) +
   labs(title = "Households with at least one member suffering from chronic illness",
-       x = "", y = "Proportion of households") +
+       x = "Proportion of households", y = "") +
   theme_minimal() +
-  theme(axis.text.x = element_text(angle = 45, hjust = 1))
+  coord_flip()
+p_salud
 
 # =============================================================================
 # 3.7. ZONA GEOGRÁFICA – GRÁFICO DE BARRAS APILADAS
 # =============================================================================
+datos_zona <- hogares %>%
+  group_by(macrozona, macrogrupo) %>%
+  summarise(n = n(), .groups = "drop") %>%
+  group_by(macrozona) %>%
+  mutate(porc = n / sum(n) * 100) %>%
+  ungroup() %>%
+  mutate(
+    macrozona = factor(macrozona,
+                       levels = c("Norte", "Centro", "Sur"),
+                       labels = c("North", "Central", "South"))
+  )
 
-hogares_zona <- hogares %>%
-  count(macrogrupo, macrozona) %>%
-  group_by(macrogrupo) %>%
-  mutate(porc = n / sum(n) * 100)
-
-p_zona <- ggplot(hogares_zona, aes(x = macrogrupo, y = porc, fill = macrozona)) +
+# Gráfico de barras apiladas
+p_zona <- ggplot(datos_zona, aes(x = macrozona, y = porc, fill = macrogrupo)) +
   geom_col(position = "fill", width = 0.7) +
-  geom_text(aes(label = ifelse(porc > 5, paste0(round(porc, 1), "%"), "")),
-            position = position_fill(vjust = 0.5), size = 3, color = "white") +
-  scale_y_continuous(labels = percent_format()) +
-  scale_fill_viridis_d(option = "plasma", end = 0.9, name = "Macrozone") + 
-  labs(title = "Geographic distribution by Macrogroup",
-       x = "", y = "Proportion of households") +
+  geom_text(aes(label = paste0(round(porc, 1), "%")),
+            position = position_fill(vjust = 0.5),
+            size = 3, color = "white") +
+  scale_y_continuous(labels = scales::percent_format()) +
+  scale_fill_viridis_d(option = "plasma", end = 0.9, name = "Macrogroup") +
+  labs(title = "Distribution of Macrogroups by geographic zone",
+       x = "Geographic zone", y = "Proportion of households") +
   theme_minimal() +
-  theme(axis.text.x = element_text(angle = 45, hjust = 1),
+  theme(axis.text.x = element_text(angle = 0, hjust = 0.5),
         legend.position = "bottom")
-
+p_zona
 # -------------------------------------------------------------------------
-# 3.8. POBREZA (barras apiladas al 100%)
+# 3.8. POBREZA (barras apiladas)
 # -------------------------------------------------------------------------
-pobreza_long <- tabla_macro %>%
-  select(macrogrupo, porc_pobreza_extrema, porc_pobreza_no_extrema, porc_no_pobre) %>%
-  pivot_longer(cols = -macrogrupo, names_to = "categoria", values_to = "porcentaje")
+pobreza_por_macro <- tabla_macro %>%
+  select(macrogrupo, 
+         `Extreme poverty` = porc_pobreza_extrema,
+         `Non-extreme poverty` = porc_pobreza_no_extrema,
+         `Not poor` = porc_no_pobre) %>%
+  pivot_longer(cols = -macrogrupo,
+               names_to = "categoria",
+               values_to = "porcentaje") %>%
+  mutate(prop = porcentaje / 100)   # ← añade proporción
 
-p_pobreza <- ggplot(pobreza_long, aes(x = macrogrupo, y = porcentaje, fill = categoria)) +
+p_pobreza <- ggplot(pobreza_por_macro, aes(x = categoria, y = prop, fill = macrogrupo)) +
   geom_col(position = "fill", width = 0.7) +
   geom_text(aes(label = ifelse(porcentaje > 5, paste0(round(porcentaje, 1), "%"), "")),
             position = position_fill(vjust = 0.5), size = 3, color = "white") +
-  scale_y_continuous(labels = percent_format()) +
-  scale_fill_viridis_d(option = "plasma", end = 0.9, 
-                       name = "",
-                       labels = c(porc_pobreza_extrema = "Extreme poverty",
-                                  porc_pobreza_no_extrema = "Non-extreme poverty",
-                                  porc_no_pobre = "Not poor")) +
-  labs(title = "Poverty by Macrogroup", x = "", y = "Proportion") +
+  scale_y_continuous(labels = scales::percent_format()) +
+  scale_fill_viridis_d(option = "plasma", end = 0.9, name = "Macrogroup") +
+  labs(title = "Poverty by Macrogroup",
+       x = "", y = "Proportion of households") +
   theme_minimal() +
-  theme(axis.text.x = element_text(angle = 45, hjust = 1),
+  theme(axis.text.x = element_text(angle = 0, hjust = 0.5),
         legend.position = "bottom")
-
+p_pobreza
 # -------------------------------------------------------------------------
 # 3.9. HACINAMIENTO (barras apiladas)
 # -------------------------------------------------------------------------
-hacinamiento_long <- tabla_macro %>%
-  select(macrogrupo, sin_hacinamiento, hacinamiento_medio, 
-         hacinamiento_alto, hacinamiento_critico) %>%
-  pivot_longer(cols = -macrogrupo, 
-               names_to = "categoria", 
+hacinamiento_por_macro <- tabla_macro %>%
+  select(macrogrupo,
+         `No overcrowding` = sin_hacinamiento,
+         `Medium overcrowding` = hacinamiento_medio,
+         `High overcrowding` = hacinamiento_alto,
+         `Critical overcrowding` = hacinamiento_critico) %>%
+  pivot_longer(cols = -macrogrupo,
+               names_to = "categoria",
                values_to = "porcentaje") %>%
-  mutate(categoria = recode(categoria,
-                            sin_hacinamiento = "No overcrowding",
-                            hacinamiento_medio = "Medium overcrowding",
-                            hacinamiento_alto = "High overcrowding",
-                            hacinamiento_critico = "Critical overcrowding"))
+  mutate(prop = porcentaje / 100)
 
-p_hacinamiento <- ggplot(hacinamiento_long, aes(x = macrogrupo, y = porcentaje, fill = categoria)) +
+p_hacinamiento <- ggplot(hacinamiento_por_macro, aes(x = categoria, y = prop, fill = macrogrupo)) +
   geom_col(position = "fill", width = 0.7) +
   geom_text(aes(label = ifelse(porcentaje > 5, paste0(round(porcentaje, 1), "%"), "")),
             position = position_fill(vjust = 0.5), size = 3, color = "white") +
-  scale_y_continuous(labels = percent_format()) +
-  scale_fill_viridis_d(option = "plasma", end = 0.9, name = "") +
-  labs(title = "Overcrowding by Macrogroup", x = "", y = "Proportion") +
+  scale_y_continuous(labels = scales::percent_format()) +
+  scale_fill_viridis_d(option = "plasma", end = 0.9, name = "Macrogroup") +
+  labs(title = "Overcrowding by Macrogroup",
+       x = "", y = "Proportion of households") +
   theme_minimal() +
-  theme(axis.text.x = element_text(angle = 45, hjust = 1),
+  theme(axis.text.x = element_text(angle = 0, hjust = 0.5),
         legend.position = "bottom")
-
+p_hacinamiento
 # -------------------------------------------------------------------------
 # 3.10. ALLEGAMIENTO (barras agrupadas)
 # -------------------------------------------------------------------------
@@ -356,64 +470,71 @@ allegamiento_long <- tabla_macro %>%
 p_allegamiento <- ggplot(allegamiento_long, aes(x = macrogrupo, y = porcentaje, fill = tipo)) +
   geom_col(position = position_dodge(width = 0.7), width = 0.6) +
   geom_text(aes(label = paste0(round(porcentaje, 1), "%")),
-            position = position_dodge(width = 0.7), vjust = -0.4, size = 3) +
+            position = position_dodge(width = 0.7), vjust = -0.3,hjust=0, size = 3) +
   scale_y_continuous(labels = percent_format()) +
   scale_fill_viridis_d(option = "plasma", end = 0.6, name = "") +
   labs(title = "Allegamiento (shared housing) by Macrogroup", x = "", y = "Proportion of households") +
   theme_minimal() +
   theme(axis.text.x = element_text(angle = 45, hjust = 1),
-        legend.position = "bottom")
-
+        legend.position = "bottom")+
+  coord_flip()
+p_allegamiento
 # -------------------------------------------------------------------------
 # 3.11. TIPO GENERACIONAL (barras apiladas)
 # -------------------------------------------------------------------------
-generacional_long <- tabla_macro %>%
-  select(macrogrupo, starts_with("porc_")) %>%
-  select(macrogrupo, porc_Multigeneracional, porc_Sin_gen_intermedia,
-         porc_Sin_adultos_mayores, porc_Sin_menores_15,
-         porc_Solo_15_64, porc_Solo_mayores_64) %>%
-  pivot_longer(cols = -macrogrupo, 
-               names_to = "tipo", 
+generacional_por_macro <- tabla_macro %>%
+  select(macrogrupo,
+         `Multigenerational` = porc_Multigeneracional,
+         `No intermediate generation` = porc_Sin_gen_intermedia,
+         `No older adults` = porc_Sin_adultos_mayores,
+         `No children under 15` = porc_Sin_menores_15,
+         `Only 15-64 years` = porc_Solo_15_64,
+         `Only over 64 years` = porc_Solo_mayores_64) %>%
+  pivot_longer(cols = -macrogrupo,
+               names_to = "categoria",
                values_to = "porcentaje") %>%
-  mutate(tipo = recode(tipo,
-                       porc_Multigeneracional = "Multigenerational",
-                       porc_Sin_gen_intermedia = "No intermediate generation",
-                       porc_Sin_adultos_mayores = "No older adults",
-                       porc_Sin_menores_15 = "No children under 15",
-                       porc_Solo_15_64 = "Only 15-64 years",
-                       porc_Solo_mayores_64 = "Only over 64 years"))
+  mutate(prop = porcentaje / 100)
 
-p_generacional <- ggplot(generacional_long, aes(x = macrogrupo, y = porcentaje, fill = tipo)) +
+p_generacional <- ggplot(generacional_por_macro, aes(x = categoria, y = prop, fill = macrogrupo)) +
   geom_col(position = "fill", width = 0.7) +
   geom_text(aes(label = ifelse(porcentaje > 5, paste0(round(porcentaje, 1), "%"), "")),
             position = position_fill(vjust = 0.5), size = 2.8, color = "white") +
-  scale_y_continuous(labels = percent_format()) +
-  scale_fill_viridis_d(option = "plasma", end = 0.9, name = "") +
-  labs(title = "Generational composition of households", x = "", y = "Proportion") +
+  scale_y_continuous(labels = scales::percent_format()) +
+  scale_fill_viridis_d(option = "plasma", end = 0.9, name = "Macrogroup") +
+  labs(title = "Generational composition of households",
+       x = "", y = "Proportion of households") +
   theme_minimal() +
   theme(axis.text.x = element_text(angle = 45, hjust = 1),
         legend.position = "bottom",
         legend.text = element_text(size = 8))
-
+p_generacional
 # =============================================================================
 # 3.12. COMPOSICIÓN FINAL Y GUARDADO
 # =============================================================================
 panel_composicion <- (p_freq + p_income) / 
-  (p_rural + p_genero) +
+  (p_rural + p_zona) +
   plot_annotation(
     title = "Basic Composition of households by Macrogroup",
     theme = theme(plot.title = element_text(hjust = 0.5, size = 16))
   )
-ggsave("Análisis de viviendas/Analisis/Figure_1.png", 
+ggsave("Análisis de viviendas/Analisis/Figure_2.png", 
        panel_composicion, width = 14, height = 10, dpi = 200, bg = "white")
 
-panel_diversidad <- (p_ie + p_salud) + 
+panel_income <-(p_income_density +p_income_density_2+ p_income_area) +
   plot_annotation(
-    title = "Ethnic diversity, migration and health by Macrogroup",
+    title = "Different options of income plots",
     theme = theme(plot.title = element_text(hjust = 0.5, size = 16))
   )
 ggsave("Análisis de viviendas/Analisis/Figure_3.png", 
-       panel_diversidad, width = 14, height = 7, dpi = 200, bg = "white")
+       panel_income, width = 21, height = 10, dpi = 200, bg = "white")
+
+panel_diversidad <- (p_native+ p_foreign + p_salud) + 
+  plot_annotation(
+    title = "Ethnic diversity, migration and health by Macrogroup",
+    theme = theme(plot.title = element_text(hjust = 0.5, size = 20))
+  )
+ggsave("Análisis de viviendas/Analisis/Figure_4.png", 
+       panel_diversidad, width = 28, height = 10, dpi = 200, bg = "white")
 
 
 panel_vivienda <- (p_pobreza + p_hacinamiento + p_allegamiento) +
@@ -421,15 +542,15 @@ panel_vivienda <- (p_pobreza + p_hacinamiento + p_allegamiento) +
     title = "Poverty, overcrowding and shared housing by Macrogroup",
     theme = theme(plot.title = element_text(hjust = 0.5, size = 16))
   )
-ggsave("Análisis de viviendas/Analisis/Figure_4.png", 
+ggsave("Análisis de viviendas/Analisis/Figure_5.png", 
        panel_vivienda, width = 18, height = 7, dpi = 200, bg = "white")
 
-panel_territorio <- (p_zona / p_generacional) +
+panel_territorio <- (p_genero / p_generacional) +
   plot_annotation(
     title = "Geographic distribution and generational composition",
     theme = theme(plot.title = element_text(hjust = 0.5, size = 16))
   )
-ggsave("Análisis de viviendas/Analisis/Figure_5.png", 
+ggsave("Análisis de viviendas/Analisis/Figure_6.png", 
        panel_territorio, width = 12, height = 12, dpi = 200, bg = "white")
 
 # =============================================================================
